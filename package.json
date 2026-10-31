@@ -1,0 +1,15 @@
+{
+  "name": "pipesor-iac",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.4",
+  "scripts": {
+    "setup:hooks": "git config --local core.hooksPath .githooks",
+    "commitlint": "commitlint",
+    "test": "sh tests/commit-msg.sh"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-angular": "21.2.4"
+  }
+}

@@ -1,0 +1,25 @@
+# Terraform working data; dependency lock files MUST remain tracked.
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.plan
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+!*.tfvars.json.example
+*.tfbackend
+!*.tfbackend.example
+.terraformrc
+terraform.rc
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.env
+.env.*
+!.env.example
+.aws/
+node_modules/
