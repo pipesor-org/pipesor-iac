@@ -53,7 +53,8 @@
 
 ## Verification
 
-- For Commitlint changes, run `bun install --frozen-lockfile` and `bun run test`.
+- For hook or Commitlint changes, run `bun install --frozen-lockfile`,
+  `lefthook validate` and `bun run test` with the Lefthook version in the README.
   Follow [README](README.md#commit-messages) for message rules and local hook setup.
 - Run from the repository root:
 

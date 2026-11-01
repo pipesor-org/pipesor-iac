@@ -4,12 +4,12 @@
   "type": "module",
   "packageManager": "bun@1.4.4",
   "scripts": {
-    "setup:hooks": "git config --local core.hooksPath .githooks",
-    "commitlint": "commitlint",
+    "setup:hooks": "lefthook install",
+    "commitlint": "bun ./node_modules/@commitlint/cli/cli.js",
     "test": "sh tests/commit-msg.sh"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
-    "@commitlint/config-angular": "21.2.4"
+    "@commitlint/config-conventional": "21.2.4"
   }
 }
