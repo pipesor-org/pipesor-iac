@@ -12,11 +12,12 @@ repository protections or deployment workflows.
 branch. No environment branches, long-lived `develop` or routine release branches.
 Follow [Pipesor's contribution policy](https://github.com/pipesor-org/.github/blob/main/CONTRIBUTING.md):
 English Angular-style Conventional Commits, `type(scope): imperative summary`
-(scope optional), with a `BREAKING CHANGE:` footer for incompatible changes. The
-repository's Angular preset rejects `!` in headers. PR titles
+(scope optional), with `!` and/or a `BREAKING CHANGE:` footer for incompatible
+changes. Document the migration in the body or footer. PR titles
 follow the same format; prefer squash merge. Example: `docs(infra): define promotion strategy`.
 
-PR validation checks commit messages as documented in [README](../README.md#commit-messages),
+PR validation checks commit messages, PR titles and the prospective squash title
+plus body as documented in [README](../README.md#commit-messages),
 plus formatting, backend-disabled initialization, validation,
 reviewed safe tests and infrastructure review for affected roots/modules and their
 callers, following [AGENTS.md](../AGENTS.md#verification). No PR receives apply

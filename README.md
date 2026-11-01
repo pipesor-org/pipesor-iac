@@ -45,8 +45,11 @@ See [verification requirements](AGENTS.md#verification) for Terraform checks.
 
 ## Commit messages
 
-Use Node.js 24 and the Bun version pinned in `package.json`. Enable the local
-`commit-msg` hook once per clone:
+Install [Lefthook 2.2.2](https://github.com/evilmartians/lefthook/releases/tag/v2.2.2)
+as a standalone binary for your OS/architecture on `PATH`, verifying its SHA-256
+against the release's `lefthook_checksums.txt`. Use the Bun version pinned in
+`package.json`. Node.js is not required: Commitlint runs explicitly with Bun.
+Enable the local `commit-msg` hook once per clone:
 
 ```bash
 bun install --frozen-lockfile
@@ -54,10 +57,18 @@ bun run setup:hooks
 bun run test
 ```
 
+When migrating an existing clone whose `core.hooksPath` is `.githooks`, run
+`git config --local --unset core.hooksPath` once before `bun run setup:hooks`.
+This removes only that local Git override; it does not change global Git settings.
+Inspect any other existing hooks path before changing it. Configuration is
+versioned in [lefthook.yml](lefthook.yml); do not
+edit the generated hooks. Optional machine-specific overrides belong in the
+ignored `lefthook-local.yml`.
+
 The hook rejects messages that fail [Commitlint configuration](commitlint.config.js).
 Use `type(scope): subject`, with an optional scope and a header of at most 72
-characters. Allowed types are `build`, `ci`, `docs`, `feat`, `fix`, `perf`,
-`refactor`, `revert`, `style` and `test`; the Angular preset excludes `chore`.
+characters. Allowed types are `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`,
+`refactor`, `revert`, `style` and `test`, matching the organization contribution policy.
 Subjects are lowercase without a trailing period. For example:
 
 ```text
@@ -65,12 +76,16 @@ feat(infra): add naming module
 docs: explain setup
 ```
 
-Explain breaking changes in a `BREAKING CHANGE:` footer after a blank line;
-the Angular preset rejects `!` in headers.
+Mark breaking changes with `!` in the header and/or a `BREAKING CHANGE:` footer
+after a blank line. Explain the migration in the body or footer.
 Default ignore rules are disabled, so merge/revert boilerplate and version-only
 messages must pass the rules too. Prefer the squash-merge convention in ADR 001.
 
-CI tests accepted/rejected examples, checks all commits between a PR's base and
-head, and checks the latest commit on pushes to `main`. It validates messages;
+CI validates the Lefthook configuration, tests accepted/rejected examples through
+Lefthook, checks PR titles and the prospective squash title plus body, checks all
+commits between a PR's base and head, and checks the latest commit on pushes to
+`main`. PR title/body edits rerun validation. GitHub uses the PR title and body
+as the default squash message, preserving `BREAKING CHANGE:` footers in the body.
+CI validates messages;
 it does not deploy. Hook activation is local to each clone, and the GitHub plan
 limitations in ADR 001 still apply to enforcing CI before merge.
