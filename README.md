@@ -1,91 +1,73 @@
 # Pipesor infrastructure
 
-Agent-first Terraform development for Pipesor, an AIOps platform for diagnosing
-CI/CD pipeline failures on Microsoft Azure. This repository currently contains
-development guidance and native Codex agent configuration; it provisions nothing.
+The Terraform development foundation for Pipesor's planned Microsoft Azure infrastructure. This repository maintains infrastructure decisions, contribution tooling, and repository-local agent configuration.
 
-Start with [AGENTS.md](AGENTS.md) and the [technical direction](docs/architecture.md).
-The [branching and promotion decision](docs/adr-001-branching-and-promotion.md)
-defines how a revision progresses through `dev`, `qa`, `preprod` and `prod`.
-Follow the organization's [contribution policy](https://github.com/pipesor-org/.github/blob/main/CONTRIBUTING.md).
+## Current state
 
-Run `codex --search` from this repository using your existing authenticated Codex
-installation. Trust this repository when Codex asks: project configuration is
-loaded only for trusted projects. No global configuration changes are needed.
-The main session coordinates `terraform_engineer` and `infrastructure_reviewer`.
-For example:
+- No Terraform roots, provider configuration, remote state, or cloud CI identity exist. This foundation provisions nothing.
+- Azure subscriptions, regions, networking, compute, identity, and service topology remain undecided.
+- Environment isolation and promotion are an accepted target strategy, not implemented deployment automation.
+- Azure credentials are unnecessary for working with the current foundation. Future resource and state operations follow the authorization requirements in [AGENTS.md](AGENTS.md#authorization).
 
-> Implement the agreed Terraform change using terraform_engineer, run the safe
-> checks, then have infrastructure_reviewer review the final diff. Resolve
-> findings and report evidence. Do not deploy or change Azure resources.
+## Requirements and setup
 
-Model and effort settings live in native configuration:
+Run commands from the repository root.
 
-- [Main coordinator](.codex/config.toml)
-- [Terraform engineer](.codex/agents/terraform-engineer.toml)
-- [Infrastructure reviewer](.codex/agents/infrastructure-reviewer.toml)
+- Bun: use the version pinned in [package.json](package.json). Commitlint runs directly with Bun; Node.js is not required.
+- Standalone [Lefthook 2.2.2](https://github.com/evilmartians/lefthook/releases/tag/v2.2.2): install the binary for your OS/architecture on `PATH`, verify its SHA-256 against the release's `lefthook_checksums.txt`, and check `lefthook version`.
+- Terraform CLI: needed for the formatting check below. The repository has no CLI version pin yet; select and pin a tested version when adding the first Terraform implementation.
 
-Credentials come from the caller. Azure credentials are unnecessary for the current
-foundation. Existing Context7 and Terraform MCP tools are used when available;
-no additional server installation or external orchestrator is required.
-
-To check configuration loading without a model request, run from a trusted repository:
-
-```bash
-codex --version
-codex --strict-config app-server --print-startup-config
-codex debug prompt-input 'List the repository roles and authorization boundary.'
-```
-
-The prompt dump should include repository guidance and both specialist descriptions
-in the available roles. Start a fresh session after agent configuration changes.
-For a live smoke check, ask the engineer for a no-edit architecture summary, then
-ask the reviewer to inspect the foundation and confirm both reports return.
-See [verification requirements](AGENTS.md#verification) for Terraform checks.
-
-## Commit messages
-
-Install [Lefthook 2.2.2](https://github.com/evilmartians/lefthook/releases/tag/v2.2.2)
-as a standalone binary for your OS/architecture on `PATH`, verifying its SHA-256
-against the release's `lefthook_checksums.txt`. Use the Bun version pinned in
-`package.json`. Node.js is not required: Commitlint runs explicitly with Bun.
-Enable the local `commit-msg` hook once per clone:
-
-```bash
+```sh
 bun install --frozen-lockfile
 bun run setup:hooks
+```
+
+Hook activation is required once per clone. For existing clones, inspect `git config --show-origin --get-all core.hooksPath`. If the local value is the former `.githooks`, remove only that value with `git config --local --unset core.hooksPath`, then rerun hook setup. Resolve other hooks-path configurations deliberately; do not change global Git settings or edit generated hooks. Optional `lefthook-local.yml` overrides are ignored by Git.
+
+## Verification
+
+Run the repository's baseline checks:
+
+```sh
+git diff --check
+terraform fmt -check -recursive
+```
+
+There are currently no Terraform files to format. A successful formatting check does not establish infrastructure validity or Azure deployability. Once roots/modules exist, follow [AGENTS.md verification](AGENTS.md#verification) for backend-disabled initialization, validation, affected callers, and reviewed safe tests.
+
+For hook or Commitlint changes, complete setup above and also run:
+
+```sh
+lefthook validate
 bun run test
 ```
 
-When migrating an existing clone whose `core.hooksPath` is `.githooks`, run
-`git config --local --unset core.hooksPath` once before `bun run setup:hooks`.
-This removes only that local Git override; it does not change global Git settings.
-Inspect any other existing hooks path before changing it. Configuration is
-versioned in [lefthook.yml](lefthook.yml); do not
-edit the generated hooks. Optional machine-specific overrides belong in the
-ignored `lefthook-local.yml`.
+The [Commitlint workflow](.github/workflows/commitlint.yml) validates hook configuration, accepted/rejected messages, PR commits, PR titles and prospective squash messages, and the latest commit on pushes to `main`. PR title/body edits rerun validation. These checks do not plan or deploy infrastructure.
 
-The hook rejects messages that fail [Commitlint configuration](commitlint.config.js).
-Use `type(scope): subject`, with an optional scope and a header of at most 72
-characters. Allowed types are `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`,
-`refactor`, `revert`, `style` and `test`, matching the organization contribution policy.
-Subjects are lowercase without a trailing period. For example:
+## Repository guide
 
-```text
-feat(infra): add naming module
-docs: explain setup
-```
+- [Technical direction](docs/architecture.md): current foundation, intended layout, state handling, and provider/module selection criteria.
+- [ADR 001](docs/adr-001-branching-and-promotion.md): environment isolation, promotion, approval requirements, and documented GitHub enforcement limitations.
+- [Agent and engineering guidance](AGENTS.md): coordination, documentation tools, authorization boundaries, and verification.
+- [Optional Codex setup](.codex/README.md): repository-local roles, configuration, and startup checks.
+- [lefthook.yml](lefthook.yml), [commitlint.config.js](commitlint.config.js), and [hook tests](tests/commit-msg.sh): local commit validation.
 
-Mark breaking changes with `!` in the header and/or a `BREAKING CHANGE:` footer
-after a blank line. Explain the migration in the body or footer.
-Default ignore rules are disabled, so merge/revert boilerplate and version-only
-messages must pass the rules too. Prefer the squash-merge convention in ADR 001.
+## Optional agent workflow
 
-CI validates the Lefthook configuration, tests accepted/rejected examples through
-Lefthook, checks PR titles and the prospective squash title plus body, checks all
-commits between a PR's base and head, and checks the latest commit on pushes to
-`main`. PR title/body edits rerun validation. GitHub uses the PR title and body
-as the default squash message, preserving `BREAKING CHANGE:` footers in the body.
-CI validates messages;
-it does not deploy. Hook activation is local to each clone, and the GitHub plan
-limitations in ADR 001 still apply to enforcing CI before merge.
+Codex is optional for editing documentation and running local checks. For infrastructure work with agents, follow [AGENTS.md](AGENTS.md#coordination): the main session coordinates `terraform_engineer` and `infrastructure_reviewer`. See the [Codex guide](.codex/README.md) for setup and diagnostics.
+
+## Promotion and authorization
+
+The target flow promotes the same immutable Git SHA through `dev` → `qa` → `preprod` → `prod`, with separate roots/states and a fresh reviewed plan for each environment. [ADR 001](docs/adr-001-branching-and-promotion.md) defines sequencing, evidence, and independent approvals; no environment roots or deployment workflows exist yet.
+
+Explicit human authorization for the target and action is required before Azure writes, applies, destroys, real-resource tests, or state mutations. PR approval and agent review do not replace environment-specific plan review or deployment approval. Follow [AGENTS.md authorization](AGENTS.md#authorization) before any such operation.
+
+## Contribution
+
+Follow the [Pipesor contribution policy](https://github.com/pipesor-org/.github/blob/main/CONTRIBUTING.md) for short-lived branches from `main`, English Angular-style Conventional Commits, reviewed PRs, and squash merges. [ADR 001](docs/adr-001-branching-and-promotion.md) describes their application to infrastructure; documented GitHub plan limitations remain relevant to enforcing checks and approvals.
+
+### Commit messages
+
+The shared policy defines message types and breaking-change notation. Local [Commitlint configuration](commitlint.config.js) requires lowercase scopes and subjects, no trailing subject period, and a maximum 72-character header. Default ignore rules are disabled, so every message must pass validation.
+
+Enable hooks using [repository setup](#requirements-and-setup). GitHub uses the PR title and body as the default squash message; preserve migration notes and any `BREAKING CHANGE:` footer in the PR body and final squash commit.
