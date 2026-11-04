@@ -41,7 +41,8 @@ OIDC for future automation and developer identity for interactive work; avoid
 storage keys and long-lived client secrets. Separate production access from
 nonproduction. State can contain secrets even when outputs are marked sensitive.
 Backend bootstrap is a separately authorized task, outside the workload state it
-will host. No backend creation, migration or credentials are included here.
+will host. [State bootstrap](state-bootstrap.md) defines the separate configuration and custody
+contract; no backend has been created or migrated.
 See HashiCorp's [Azure backend reference](https://developer.hashicorp.com/terraform/language/backend/azurerm).
 
 ## Terraform and naming
@@ -119,3 +120,13 @@ credentials for the credential-free checks.
 Resource-group names and metadata locations can be replacement-sensitive. Review
 any future change before deployment; deleting a group may also delete resources
 placed into it later. No existing resources are imported or adopted by this code.
+
+## State bootstrap
+
+`modules/state-store` and four `bootstrap/<environment>` callers implement the
+separate state-store prerequisite described in [state bootstrap](state-bootstrap.md).
+The user selected a public endpoint restricted to approved operator IPs; the
+configuration denies other networks and grants explicit container-scoped Entra
+access. Account details, redundancy and recovery windows remain required inputs.
+These infrastructure state controls do not select workload storage, retention,
+secret management or network topology.
