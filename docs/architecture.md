@@ -1,12 +1,16 @@
 # Technical direction
 
-This is a development foundation, not an Azure landing zone. Subscriptions,
-regions, networking, compute, identity and service topology remain undecided.
-No backend, provider configuration, Terraform root or cloud CI identity exists.
+This foundation defines one resource group in each of four Terraform roots; it is
+not an Azure landing zone. No resources or remote backends have been deployed.
+Subscriptions and metadata locations are required inputs, with no selected values.
+Workload regions, networking, capacity, identity configuration and service delivery
+contracts remain undecided. The Azure service selections and their limits are
+recorded in [architecture consumption](architecture-consumption.md). No cloud CI
+identity or deployment workflow exists.
 Branching, environment isolation and promotion follow
 [ADR 001](adr-001-branching-and-promotion.md).
 
-## Boundaries for the first implementation
+## Implementation boundaries
 
 Create directories only when they contain a real implementation:
 
@@ -19,15 +23,17 @@ Create directories only when they contain a real implementation:
 | `.codex/` | Repository-local coordinator settings and specialist agent definitions. |
 
 Use `dev`, `qa`, `preprod` and `prod`, with separate roots and remote states as
-defined in ADR 001. Start with one component per environment. Split state only for distinct ownership,
-lifecycle, permissions or failure impact. Pass explicit inputs/outputs; avoid
+defined in ADR 001. Start with one component per environment. Split state only for
+distinct ownership, lifecycle, permissions or failure impact. Pass explicit inputs/outputs; avoid
 coupling components through broad remote-state access.
 
 Nonsecret environment inputs belong beside their root. Commit example variable
 files; keep actual `*.tfvars` local (ignored). Secrets arrive through the execution
 environment or an approved secret store, never committed files. Backend location
 is separate from resource inputs: use a partial `azurerm` backend and nonsecret
-`*.tfbackend.example` templates when a backend is actually established.
+`*.tfbackend.example` templates for the separately established backend. The
+declarations and placeholder templates do not create a backend; only backend-disabled initialization is part of local/CI
+verification.
 
 The intended state store is Azure Blob Storage with a unique key per environment
 and component, locking, recovery protection and scoped Entra ID access. Prefer
@@ -67,5 +73,49 @@ Use modern outputs rather than deprecated legacy outputs. Check each selected
 resource against [Microsoft's naming rules](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules).
 A generated unique name does not reserve it or guarantee availability. Decide a
 stable uniqueness strategy and test length/character limits before adoption;
-changing names/seeds later can replace resources. No naming wrapper or dependency
-is installed yet. A custom generator needs a documented gap in this module.
+changing names/seeds later can replace resources.
+
+The resource-group composition consumes this version directly with
+`suffix = ["pipesor", environment]` and `unique_length = 0`. Its names are
+`rg-pipesor-dev`, `rg-pipesor-qa`, `rg-pipesor-preprod` and `rg-pipesor-prod`.
+Resource-group uniqueness is subscription-scoped; no random seed is needed.
+These names do not establish a strategy for globally named services. A custom
+generator needs a documented gap in this module.
+
+## Resource-group foundation
+
+`modules/resource-group` composes naming with
+[`Azure/avm-res-resources-resourcegroup/azurerm` 0.4.0](https://github.com/Azure/terraform-azurerm-avm-res-resources-resourcegroup/tree/v0.4.0).
+The shared contract validates the four environment names and an explicit lowercase
+location code; it exports only ID, name and location. Each environment root fixes
+its own environment and requires a subscription UUID and metadata location.
+One initial group per environment is an implementation prerequisite, not an
+approved workload grouping policy. Nothing is deployed by adding these files.
+
+The suitable resource-group AVM uses **AzAPI**, despite its registry provider
+suffix. Roots pin AzAPI 2.9.0 and Terraform 1.17.1. The naming dependency remains
+0.3.0. The AVM pins its interfaces dependency to 0.6.0; provider locks include its
+transitive Random and ModTM dependencies. AVM telemetry is disabled, and naming
+creates no random resources with `unique_length = 0`. No role assignments,
+management locks, service resources or data-plane access are requested.
+
+Root providers set `skip_provider_registration = true`, `enable_preflight = false`
+and disable Terraform partner attribution, following the
+[AzAPI 2.9.0 provider schema](https://github.com/Azure/terraform-provider-azapi/blob/v2.9.0/docs/index.md).
+The [AVM source](https://github.com/Azure/terraform-azurerm-avm-res-resources-resourcegroup/blob/v0.4.0/main.tf)
+uses the provider's current subscription to parent the resource group. Real plans
+still require the target tenant/subscription/backend and read-only credentials to
+be reviewed; no autonomous check authenticates to Azure. Module and caller tests
+replace the entire AzAPI provider, including client-configuration data sources,
+and every run explicitly uses `command = plan`.
+
+Each root has an empty partial `azurerm` backend and a nonsecret example. Before
+real use, separately authorize backend bootstrap and establish isolated containers,
+environment-scoped Entra RBAC, locking and recovery. Unique keys alone do not
+isolate access. Backend authentication and resource-provider authentication are
+separate. Do not use the placeholders, initialize real state or supply write
+credentials for the credential-free checks.
+
+Resource-group names and metadata locations can be replacement-sensitive. Review
+any future change before deployment; deleting a group may also delete resources
+placed into it later. No existing resources are imported or adopted by this code.

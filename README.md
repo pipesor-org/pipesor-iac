@@ -1,11 +1,11 @@
 # Pipesor infrastructure
 
-The Terraform development foundation for Pipesor's planned Microsoft Azure infrastructure. This repository maintains infrastructure decisions, contribution tooling, and repository-local agent configuration.
+Terraform foundation for Pipesor's planned Microsoft Azure infrastructure, with isolated environment roots, safe validation and documented architecture boundaries.
 
 ## Current state
 
-- No Terraform roots, provider configuration, remote state, or cloud CI identity exist. This foundation provisions nothing.
-- Azure subscriptions, regions, networking, compute, identity, and service topology remain undecided.
+- Four roots define one resource group each: `dev`, `qa`, `preprod` and `prod`. No Azure resources or remote backends have been deployed.
+- Subscription IDs and resource-group metadata locations are required inputs without defaults. Service resources, networking, SKUs, identities and secrets remain outside this increment.
 - Environment isolation and promotion are an accepted target strategy, not implemented deployment automation.
 - Azure credentials are unnecessary for working with the current foundation. Future resource and state operations follow the authorization requirements in [AGENTS.md](AGENTS.md#authorization).
 
@@ -15,7 +15,7 @@ Run commands from the repository root.
 
 - Bun: use the version pinned in [package.json](package.json). Commitlint runs directly with Bun; Node.js is not required.
 - Standalone [Lefthook 2.2.2](https://github.com/evilmartians/lefthook/releases/tag/v2.2.2): install the binary for your OS/architecture on `PATH`, verify its SHA-256 against the release's `lefthook_checksums.txt`, and check `lefthook version`.
-- Terraform CLI: needed for the formatting check below. The repository has no CLI version pin yet; select and pin a tested version when adding the first Terraform implementation.
+- Terraform CLI **1.17.1**, pinned in [.terraform-version](.terraform-version) and each root. Registry/GitHub access is required to initialize the pinned AVM modules and locked providers; Azure credentials are unnecessary.
 
 ```sh
 bun install --frozen-lockfile
@@ -33,7 +33,30 @@ git diff --check
 terraform fmt -check -recursive
 ```
 
-There are currently no Terraform files to format. A successful formatting check does not establish infrastructure validity or Azure deployability. Once roots/modules exist, follow [AGENTS.md verification](AGENTS.md#verification) for backend-disabled initialization, validation, affected callers, and reviewed safe tests.
+Initialize and validate every module/root, then run the explicitly selected native
+test file. All tests replace AzAPI with a mock and use plan-only runs; `testregion`
+and the UUID in tests are synthetic fixtures, not selected Azure inputs.
+
+```sh
+for directory in modules/resource-group environments/dev environments/qa environments/preprod environments/prod; do
+  terraform -chdir="$directory" init -backend=false -input=false -lockfile=readonly
+  terraform -chdir="$directory" validate
+  terraform -chdir="$directory" test -filter=tests/contract.tftest.hcl
+done
+```
+
+Run these checks without Azure write credentials. Backend-disabled initialization
+does not connect to remote state. Validation and mocked plans do not prove Azure
+deployability, permissions, region availability, backend access or workload health.
+The [Terraform workflow](.github/workflows/terraform.yml) runs these credential-free
+checks for all five directories on PRs and pushes to `main`; it has no Azure login,
+OIDC permission, plan artifact or deployment job.
+
+`terraform.tfvars.example` and `backend.tfbackend.example` beside each root document
+required inputs with placeholders. Backend creation and access setup are a separate
+authorized task; no state store exists here. Do not run a real plan until tenant,
+subscription, environment, backend and side effects have been reviewed under
+[AGENTS.md](AGENTS.md#authorization).
 
 For hook or Commitlint changes, complete setup above and also run:
 
@@ -47,6 +70,7 @@ The [Commitlint workflow](.github/workflows/commitlint.yml) validates hook confi
 ## Repository guide
 
 - [Technical direction](docs/architecture.md): current foundation, intended layout, state handling, and provider/module selection criteria.
+- [Consumed architecture](docs/architecture-consumption.md): consulted documentation revision, evidence limits, supported scope and unresolved contracts.
 - [ADR 001](docs/adr-001-branching-and-promotion.md): environment isolation, promotion, approval requirements, and documented GitHub enforcement limitations.
 - [Agent and engineering guidance](AGENTS.md): coordination, documentation tools, authorization boundaries, and verification.
 - [Optional Codex setup](.codex/README.md): repository-local roles, configuration, and startup checks.
@@ -58,7 +82,7 @@ Codex is optional for editing documentation and running local checks. For infras
 
 ## Promotion and authorization
 
-The target flow promotes the same immutable Git SHA through `dev` → `qa` → `preprod` → `prod`, with separate roots/states and a fresh reviewed plan for each environment. [ADR 001](docs/adr-001-branching-and-promotion.md) defines sequencing, evidence, and independent approvals; no environment roots or deployment workflows exist yet.
+The target flow promotes the same immutable Git SHA through `dev` → `qa` → `preprod` → `prod`, with separate roots/states and a fresh reviewed plan for each environment. [ADR 001](docs/adr-001-branching-and-promotion.md) defines sequencing, evidence, and independent approvals; the roots are present, while state isolation and deployment automation still require separate implementation and authorization.
 
 Explicit human authorization for the target and action is required before Azure writes, applies, destroys, real-resource tests, or state mutations. PR approval and agent review do not replace environment-specific plan review or deployment approval. Follow [AGENTS.md authorization](AGENTS.md#authorization) before any such operation.
 

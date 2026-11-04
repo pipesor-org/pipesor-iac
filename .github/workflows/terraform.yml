@@ -1,0 +1,51 @@
+name: Terraform
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        directory:
+          - modules/resource-group
+          - environments/dev
+          - environments/qa
+          - environments/preprod
+          - environments/prod
+    env:
+      TF_IN_AUTOMATION: "true"
+      ARM_USE_CLI: "false"
+      ARM_USE_MSI: "false"
+      ARM_USE_OIDC: "false"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Read Terraform version
+        id: terraform
+        run: echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ steps.terraform.outputs.version }}
+          terraform_wrapper: false
+      - run: git diff --check
+      - run: terraform fmt -check -recursive
+      - name: Initialize without state access
+        working-directory: ${{ matrix.directory }}
+        run: terraform init -backend=false -input=false -lockfile=readonly
+      - name: Validate
+        working-directory: ${{ matrix.directory }}
+        run: terraform validate
+      - name: Test reviewed mocked plans
+        working-directory: ${{ matrix.directory }}
+        run: terraform test -filter=tests/contract.tftest.hcl
