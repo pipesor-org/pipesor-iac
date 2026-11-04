@@ -1,0 +1,7 @@
+# Separately bootstrap and authorize this backend before use; no backend exists here.
+# Use a distinct container and environment-scoped RBAC, not merely a distinct key.
+storage_account_name = "<approved-state-storage-account>"
+container_name       = "<dedicated-qa-state-container>"
+key                  = "qa/foundation.tfstate"
+use_azuread_auth     = true
+# Authentication comes from the approved execution environment; never add keys/secrets.

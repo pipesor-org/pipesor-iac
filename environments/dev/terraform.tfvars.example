@@ -1,0 +1,3 @@
+# Replace with reviewed environment values; these placeholders are not deployment inputs.
+subscription_id = "<target-subscription-uuid>"
+location        = "<approved-azure-region-code>"
