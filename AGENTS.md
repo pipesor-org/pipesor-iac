@@ -5,7 +5,7 @@
 - Read [architecture](docs/architecture.md) and
   [ADR 001](docs/adr-001-branching-and-promotion.md) before Terraform work. Add infrastructure
   only for an agreed requirement; the current implementation is limited to the
-  resource-group foundation.
+  resource-group foundation and separate state-bootstrap configuration.
 - The main session scopes the task, delegates implementation to `terraform_engineer`,
   verifies results, then asks `infrastructure_reviewer` to review the final diff.
   Resolve findings and repeat affected checks/review. Handle small documentation-only

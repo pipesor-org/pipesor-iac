@@ -4,8 +4,9 @@ Terraform foundation for Pipesor's planned Microsoft Azure infrastructure, with 
 
 ## Current state
 
+- [State bootstrap](docs/state-bootstrap.md) defines isolated state accounts and containers using required deployment inputs. No state store has been created; bootstrap state custody and real operations require separate authorization.
 - Four roots define one resource group each: `dev`, `qa`, `preprod` and `prod`. No Azure resources or remote backends have been deployed.
-- Subscription IDs and resource-group metadata locations are required inputs without defaults. Service resources, networking, SKUs, identities and secrets remain outside this increment.
+- Subscription IDs and resource-group metadata locations are required inputs without defaults. Workload service resources, networking, SKUs, identities and secrets remain outside this increment.
 - Environment isolation and promotion are an accepted target strategy, not implemented deployment automation.
 - Azure credentials are unnecessary for working with the current foundation. Future resource and state operations follow the authorization requirements in [AGENTS.md](AGENTS.md#authorization).
 
@@ -38,7 +39,7 @@ test file. All tests replace AzAPI with a mock and use plan-only runs; `testregi
 and the UUID in tests are synthetic fixtures, not selected Azure inputs.
 
 ```sh
-for directory in modules/resource-group environments/dev environments/qa environments/preprod environments/prod; do
+for directory in modules/resource-group modules/state-store environments/dev environments/qa environments/preprod environments/prod bootstrap/dev bootstrap/qa bootstrap/preprod bootstrap/prod; do
   terraform -chdir="$directory" init -backend=false -input=false -lockfile=readonly
   terraform -chdir="$directory" validate
   terraform -chdir="$directory" test -filter=tests/contract.tftest.hcl
@@ -49,10 +50,10 @@ Run these checks without Azure write credentials. Backend-disabled initializatio
 does not connect to remote state. Validation and mocked plans do not prove Azure
 deployability, permissions, region availability, backend access or workload health.
 The [Terraform workflow](.github/workflows/terraform.yml) runs these credential-free
-checks for all five directories on PRs and pushes to `main`; it has no Azure login,
+checks for all ten directories on PRs and pushes to `main`; it has no Azure login,
 OIDC permission, plan artifact or deployment job.
 
-`terraform.tfvars.example` and `backend.tfbackend.example` beside each root document
+`terraform.tfvars.example` and `backend.tfbackend.example` beside each workload root document
 required inputs with placeholders. Backend creation and access setup are a separate
 authorized task; no state store exists here. Do not run a real plan until tenant,
 subscription, environment, backend and side effects have been reviewed under
