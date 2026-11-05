@@ -56,3 +56,14 @@ variable "postgresql" {
     error_message = "PostgreSQL requires the existing container platform VNet; opt in to container_platform first."
   }
 }
+
+variable "application_insights_enabled" {
+  type        = bool
+  nullable    = false
+  default     = false
+  description = "Opt in to shared backend Application Insights using the existing platform workspace. Disabling after deployment proposes destruction."
+  validation {
+    condition     = !var.application_insights_enabled || var.container_platform != null
+    error_message = "Application Insights requires the existing container platform workspace."
+  }
+}

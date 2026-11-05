@@ -59,6 +59,14 @@ export function checkCallerPlans(directory, stdout) {
     assert.ok(output, 'Missing platform output');
     for (const item of [network, subnet, workspace, platform]) assert.ok(item.id, 'Missing mocked resource ID');
     assert.deepEqual([output.environment_id, output.infrastructure_subnet_id, output.workspace_id, output.network_id], [platform.id, subnet.id, workspace.id, network.id], 'Caller resource ID exports');
+    const telemetryPlan = plan('opt_in_application_insights_contract');
+    const telemetry = resource(telemetryPlan, 'module.application_insights[0].azapi_resource.component');
+    const telemetryWorkspace = resource(telemetryPlan, prefix + 'workspace');
+    assert.equal(telemetry.parent_id, group, 'Telemetry caller resource group');
+    assert.equal(telemetry.location, 'workloadregion', 'Telemetry caller location');
+    assert.equal(telemetry.name, `appipipesor${environment}`, 'Telemetry caller environment');
+    assert.equal(telemetry.body.properties.WorkspaceResourceId, telemetryWorkspace.id, 'Telemetry caller workspace forwarding');
+    assert.equal(telemetry.body.properties.DisableLocalAuth, true, 'Telemetry caller Entra authentication');
     const databasePlan = plan('opt_in_postgresql_contract');
     const pgPrefix = 'module.postgresql[0].azapi_resource.';
     const databaseNetwork = resource(databasePlan, prefix + 'network');
@@ -98,7 +106,7 @@ export function checkCallerPlans(directory, stdout) {
 
 if (import.meta.main) {
   const directory = process.argv[2];
-  const module = /^modules\/(resource-group|state-store|container-platform|service-bus|postgresql)$/.test(directory);
+  const module = /^modules\/(resource-group|state-store|container-platform|service-bus|postgresql|application-insights)$/.test(directory);
   assert.ok(module || /^(environments|bootstrap)\/(dev|qa|preprod|prod)$/.test(directory), 'Select one reviewed Terraform directory');
   const command = ['terraform', `-chdir=${directory}`, 'test', '-filter=tests/contract.tftest.hcl'];
   if (!module) command.push('-json', '-verbose');

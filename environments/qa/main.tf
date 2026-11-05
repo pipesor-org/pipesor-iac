@@ -34,3 +34,14 @@ module "postgresql" {
     infrastructure_subnet_prefix = var.container_platform.infrastructure_subnet_prefix
   }
 }
+
+module "application_insights" {
+  count             = var.application_insights_enabled && var.container_platform != null ? 1 : 0
+  source            = "../../modules/application-insights"
+  environment       = "qa"
+  resource_group_id = module.resource_group.resource_group.id
+  workspace = {
+    id       = module.container_platform[0].platform.workspace_id
+    location = var.container_platform.location
+  }
+}

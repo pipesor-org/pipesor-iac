@@ -48,7 +48,7 @@ The separate Azure Blob backend for Terraform state remains in scope.
 | Area | Remaining decision or evidence |
 | --- | --- |
 | Container Apps network | Custom VNet, dedicated delegated subnet and external-capable environment are selected. Actual address allocation, region and connectivity to later dependencies remain explicit inputs/decisions. |
-| Monitoring | One shared workspace per provisioned environment and Azure Monitor log routing are selected. Actual retention and ingestion limits require explicit inputs; application telemetry remains part of service delivery. |
+| Monitoring | One shared workspace per provisioned environment and Azure Monitor log routing are selected. One shared backend Application Insights component per environment is approved, linked to the existing workspace with Entra-only authentication and public endpoints. Actual limits, effective table retention and instrumentation remain deployment inputs/contracts. |
 | Database | Flexible Server / PostgreSQL 17 / B2s / 32 GiB / private VNet / Entra-only / seven-day local backups / no HA are approved for local implementation. Region, names, administrator and subnet allocation remain required inputs; operational access and SQL contracts remain open. |
 | Messaging | A public, Entra-only Standard namespace is approved for local implementation. Exact entities/topology evidence (PD-015), runtime access and delivery contracts remain open. |
 | API perimeter | Prove the selected APIM tier can reach protected backends and prevent authorization bypass. Consumption remains a candidate pending that proof. |
@@ -299,3 +299,57 @@ Sources (consulted 2026-11-05):
 - [Configuration ARM API](https://learn.microsoft.com/en-us/azure/templates/microsoft.dbforpostgresql/2024-08-01/flexibleservers/configurations)
 - [Private network/subnet/DNS requirements](https://learn.microsoft.com/en-us/azure/postgresql/network/concepts-networking-private)
 - [AzAPI 2.9.0 update lifecycle](https://github.com/Azure/terraform-provider-azapi/blob/v2.9.0/docs/resources/update_resource.md)
+
+## Shared backend Application Insights
+
+The user approved one optional workspace-based backend component per provisioned
+environment, using the existing Log Analytics workspace in the same region.
+`application_insights_enabled = false` is the default; enabling it requires
+`container_platform`. No new workspace, workload storage, network resources or
+state boundary is added. Naming uses AVM 0.3.0 modern `names.component`, producing
+`appipipesor<environment>`; this retains the catalog's no-dash format.
+
+The component disables local authentication, retains IP masking and enables public
+ingestion/query endpoints. A connection string supplies routing, not Entra access;
+backend identity and scoped ingestion permissions are still required. The output
+exports only component identity, workspace ID and the service-provided connection
+string, not standalone API keys. Shared telemetry does not grant isolation between
+services: define resource/role attributes and review access before operating it.
+
+Java and Python instrumentation must implement and test supported Entra token
+handling. Older Java SDKs and direct browser ingestion are not assumed compatible.
+No runtime identities, role grants, instrumentation, alerts, browser telemetry or
+sampling percentages are selected here. Applications must sanitize telemetry at
+source; IP masking alone does not remove sensitive messages or attributes. Avoid
+exporting the same application logs through both ACA console logs and an SDK
+without an intentional filtering design.
+
+Telemetry ingestion and storage are billed through the existing workspace. Its cap
+is a visibility/cost backstop, not a hard spend limit. Effective Application Insights
+table retention must be reviewed independently: linking a workspace does not prove
+that its default retention applies identically to all tables. No component/table
+retention setting is introduced or inferred from the 365-day evidence policy.
+
+The existing platform keeps ownership of the shared workspace to preserve resource
+addresses and lifecycle. Workspace extraction under proposed ADR 002 remains a
+separate refactor. Reassigning the linked workspace or changing its location is
+marked for component replacement; review telemetry continuity and deployment
+connection strings before applying. Removing an enabled component proposes
+resource deletion, not a pause. Historical workspace data and its retention need
+independent review; this module does not purge it.
+
+Terraform 1.17.1 and AzAPI 2.9.0 remain selected. The stable component API is
+`Microsoft.Insights/components@2020-02-02`, with embedded schema validation enabled.
+AVM 0.5.0 was evaluated through Terraform MCP: it requires AzAPI `~> 2.12` and Time,
+so the focused local security/routing contract preserves existing provider pins.
+No sampling, daily cap, linked profiler storage or AVM default retention is copied.
+
+Sources consulted 2026-11-05:
+
+- [Versioned ARM component schema](https://learn.microsoft.com/en-us/azure/templates/microsoft.insights/2020-02-02/components)
+- [AVM component 0.5.0](https://registry.terraform.io/modules/Azure/avm-res-insights-component/azurerm/0.5.0)
+- [Entra authentication and SDK support](https://learn.microsoft.com/en-us/azure/azure-monitor/app/azure-ad-authentication)
+- [Workspace-based Application Insights](https://learn.microsoft.com/en-us/azure/azure-monitor/app/create-workspace-resource)
+
+Local validation and mocked tests cannot establish actual ingestion, SDK behavior,
+identity access, effective retention, regional availability or deployed cost.
