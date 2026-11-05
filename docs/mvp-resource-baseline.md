@@ -33,7 +33,7 @@ exposure.
 | --- | --- |
 | Container Apps network | Custom VNet, dedicated delegated subnet and external-capable environment are selected. Actual address allocation, region and connectivity to later dependencies remain explicit inputs/decisions. |
 | Monitoring | One shared workspace per provisioned environment and Azure Monitor log routing are selected. Actual retention and ingestion limits require explicit inputs; application telemetry remains part of service delivery. |
-| Database | Accept hosting service/tier, region, connectivity and capacity. PostgreSQL/pgvector and existing data ownership remain established; managed HA is not assumed. |
+| Database | Flexible Server / PostgreSQL 17 / B2s / 32 GiB / private VNet / Entra-only / seven-day local backups / no HA are approved for local implementation. Region, names, administrator and subnet allocation remain required inputs; operational access and SQL contracts remain open. |
 | Messaging | A public, Entra-only Standard namespace is approved for local implementation. Exact entities/topology evidence (PD-015), runtime access and delivery contracts remain open. |
 | API perimeter | Prove the selected APIM tier can reach protected backends and prevent authorization bypass. Consumption remains a candidate pending that proof. |
 | Evidence storage | Agree workload access, recovery and retention mechanics; Terraform state storage is separate. |
@@ -206,3 +206,80 @@ Sources checked 2026-11-05:
 - [Disable local authentication](https://learn.microsoft.com/en-us/azure/service-bus-messaging/disable-local-authentication)
 - [Minimum TLS configuration](https://learn.microsoft.com/en-us/azure/service-bus-messaging/transport-layer-security-configure-minimum-version)
 - [Azure resource naming rules](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules#microsoftservicebus)
+
+## Shared PostgreSQL foundation
+
+The approved MVP database is one optional Flexible Server per provisioned
+environment: PostgreSQL 17, Burstable Standard_B2s, 32 GiB Premium SSD with storage
+auto-growth disabled, seven-day local backups and no HA, geo-redundant backup or
+replicas. This is a controlled-validation sizing hypothesis, not an availability,
+throughput, RPO or RTO commitment. Watch CPU credits, memory, connection pools,
+storage/WAL and index growth before sizing later environments. Backup retention
+is unrelated to the application's 365-day evidence-retention requirement.
+
+Each root defaults `postgresql` to null. Opt-in requires `container_platform`,
+because its existing VNet is the approved network; database and VNet regions must
+match. Names, region, tenant/admin identity and subnet prefix are explicit inputs.
+The module creates a distinct delegated subnet, private DNS zone and VNet link,
+server and explicit Entra administrator. The subnet must be canonical RFC1918 IPv4,
+/28 or larger, contained in the VNet and disjoint from the dedicated ACA subnet.
+Names are reviewed explicit globally available server names, like state storage
+and messaging; no random naming or availability guarantee is introduced.
+
+Private VNet integration provides no public database endpoint. The ARM
+`publicNetworkAccess` field is omitted because Microsoft documents it for servers
+outside customer VNet integration. No private endpoint, firewall, VPN, runner,
+route/NSG, new identity or secret store is created. An approved private operator/
+migration access path and real DNS/Entra connectivity must be verified before use.
+Entra-only disables password authentication; the named administrator has database
+administrative privileges and is not a runtime application identity. Tenant,
+principal existence/authority, driver token refresh, SQL roles and least-privilege
+service grants remain outside local validation.
+
+`azure.extensions` is set to `vector` using `azapi_update_resource`, configuring
+an existing server parameter rather than creating an SQL extension. Removing
+that update alone leaves the parameter unchanged; resetting it requires a reviewed
+update. SQL `CREATE EXTENSION`, target database/schema, migrations and grants
+remain with the accepted database owners. No connection strings or passwords are
+read/exported. Outputs are server ID/name/service-reported FQDN and network IDs.
+
+ADR 002 extraction was evaluated as PostgreSQL becomes a second network consumer.
+The existing network/subnet/environment replacement chain uses direct resource
+lifecycle references. This increment retains those resource addresses and behavior
+and passes the VNet ID to the root's PostgreSQL peer. It deliberately accepts a
+temporary dependency on platform ownership; extraction needs its own tested
+address/lifecycle migration. No moved blocks or state operations are needed here.
+Removing the platform while keeping PostgreSQL configured fails validation;
+removing both can propose destruction of the database and its recovery data.
+Subnet allocation changes or server name/location changes can replace the server.
+Changes to the parent VNet allocation or location also trigger replacement of the
+database subnet, DNS link and server; server replacement reapplies the administrator
+and extension setting. These replacements can cause downtime and data loss. Review
+a data-preservation and migration plan; neither a Git revert nor backups guarantee
+recovery after resource deletion. Mocked tests check the declared triggers, not
+actual Azure replacement behavior.
+
+Terraform 1.17.1 and AzAPI 2.9.0 are retained. Stable APIs are PostgreSQL/server,
+administrators and configurations `2024-08-01`, subnet `2024-05-01` and private DNS
+`2020-06-01`; embedded schema validation remains enabled. AVM 0.2.3 was evaluated
+through Terraform MCP and tagged source. It supports AzAPI `~> 2.4` but also requires
+AzureRM `~> 4.12` (plus Random/ModTM), so this narrow repeated security composition
+preserves the selected provider set. Context7 AVM guidance was supplemented with
+versioned ARM and networking references; main-branch examples do not authorize
+dependency upgrades.
+
+Provisioned compute, storage, backup excess and private DNS can incur charges.
+There is no automatic stop/start scheduler or budget enforcement. Null removes
+configuration rather than pausing billing. Safe validation and mocked tests do
+not establish actual SKU/region availability, name uniqueness, extension builds,
+authentication, DNS, recovery or production readiness. Real plans, Azure writes
+and state operations retain the existing authorization gates.
+
+Sources (consulted 2026-11-05):
+
+- [AVM 0.2.3 dependencies](https://github.com/Azure/terraform-azurerm-avm-res-dbforpostgresql-flexibleserver/blob/v0.2.3/terraform.tf)
+- [Server ARM API](https://learn.microsoft.com/en-us/azure/templates/microsoft.dbforpostgresql/2024-08-01/flexibleservers)
+- [Administrator ARM API](https://learn.microsoft.com/en-us/azure/templates/microsoft.dbforpostgresql/2024-08-01/flexibleservers/administrators)
+- [Configuration ARM API](https://learn.microsoft.com/en-us/azure/templates/microsoft.dbforpostgresql/2024-08-01/flexibleservers/configurations)
+- [Private network/subnet/DNS requirements](https://learn.microsoft.com/en-us/azure/postgresql/network/concepts-networking-private)
+- [AzAPI 2.9.0 update lifecycle](https://github.com/Azure/terraform-provider-azapi/blob/v2.9.0/docs/resources/update_resource.md)

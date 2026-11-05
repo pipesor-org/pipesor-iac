@@ -19,3 +19,17 @@ service_bus = null
 #   namespace_name = "<approved-globally-unique-namespace-name>"
 #   location       = "<approved-workload-region>"
 # }
+
+# Requires container_platform; replace all values with reviewed environment inputs.
+postgresql = null
+# postgresql = {
+#   server_name = "<globally-available-server-name>"
+#   location = "<same-region-as-platform>"
+#   subnet_prefix = "<dedicated-postgresql-subnet-cidr>"
+#   tenant_id = "<tenant-uuid>"
+#   administrator = {
+#     object_id = "<entra-administrator-object-uuid>"
+#     principal_name = "<entra-administrator-name>"
+#     principal_type = "<Group-User-or-ServicePrincipal>"
+#   }
+# }

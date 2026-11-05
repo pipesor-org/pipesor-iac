@@ -27,7 +27,14 @@ function environmentEvents() {
     ],
     output_changes: { container_platform: { after: { environment_id: platform.id, infrastructure_subnet_id: subnet.id, workspace_id: workspace.id, network_id: network.id } } },
   };
-  return [...eventsFor('qa_root_contract', { resource_changes: [] }), ...eventsFor('opt_in_platform_contract', enabled), summary];
+  const pgPrefix = 'module.postgresql[0].azapi_resource.';
+  const databasePlan = { resource_changes: [
+    resource('module.container_platform[0].azapi_resource.network', network),
+    resource(pgPrefix + 'subnet', { parent_id: network.id, body: { properties: { addressPrefix: '10.50.2.0/28' } } }),
+    resource(pgPrefix + 'server', { parent_id: group, location: 'workloadregion', name: 'test-pipesor-qa-pg', body: { properties: { authConfig: { tenantId: subscription.split('/')[2] } } } }),
+    resource(pgPrefix + 'administrator', { name: principals[0] }),
+  ] };
+  return [...eventsFor('qa_root_contract', { resource_changes: [] }), ...eventsFor('opt_in_platform_contract', enabled), ...eventsFor('opt_in_postgresql_contract', databasePlan), summary];
 }
 
 function bootstrapEvents(environment = 'prod', account = 'pipesorstatefixtureprod') {
@@ -104,4 +111,11 @@ test('runner preserves Terraform failure even if its stdout looks successful', (
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test('rejects corrupted database caller VNet forwarding', () => {
+  const events = environmentEvents();
+  const plan = events.find(event => event.type === 'test_plan' && event['@testrun'] === 'opt_in_postgresql_contract').test_plan;
+  plan.resource_changes.find(resource => resource.address === 'module.postgresql[0].azapi_resource.subnet').change.after.parent_id = subscription;
+  expect(() => checkCallerPlans('environments/qa', encode(events))).toThrow('Database caller VNet');
 });
