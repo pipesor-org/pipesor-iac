@@ -27,6 +27,22 @@ profiles. Per-app ingress and authorization still require approved service
 contracts; external-capable infrastructure does not approve public application
 exposure.
 
+## Decision: exclude workload Blob Storage from the MVP
+
+Accepted by the project owner on 2026-11-05: Azure Blob Storage is excluded from
+the MVP workload infrastructure. GitHub Actions remains the original workflow-log
+source; PostgreSQL holds operational data, sanitized diagnostic evidence and RAG
+knowledge through pgvector. Current functional requirements do not demonstrate a
+need to duplicate complete workflow logs in separate object storage. RAG does not
+justify adding a Blob dependency.
+
+Canonical architecture in `pipesor-docs` will be reconciled separately; this entry
+records the authorized IaC scope without modifying that repository. Retention,
+source-log deletion/access changes and the required evidence-retrieval guarantees
+remain unresolved. Configurable GitHub retention does not guarantee independent
+preservation of original logs. These open questions do not authorize Blob Storage.
+The separate Azure Blob backend for Terraform state remains in scope.
+
 ## Decisions still required for the affected resources
 
 | Area | Remaining decision or evidence |
@@ -36,7 +52,7 @@ exposure.
 | Database | Flexible Server / PostgreSQL 17 / B2s / 32 GiB / private VNet / Entra-only / seven-day local backups / no HA are approved for local implementation. Region, names, administrator and subnet allocation remain required inputs; operational access and SQL contracts remain open. |
 | Messaging | A public, Entra-only Standard namespace is approved for local implementation. Exact entities/topology evidence (PD-015), runtime access and delivery contracts remain open. |
 | API perimeter | Prove the selected APIM tier can reach protected backends and prevent authorization bypass. Consumption remains a candidate pending that proof. |
-| Evidence storage | Agree workload access, recovery and retention mechanics; Terraform state storage is separate. |
+| Evidence retention | Workload Blob Storage is excluded by the decision above; evidence-retention and retrieval guarantees remain open. Terraform state storage is separate. |
 | Images and credentials | GHCR is selected for the MVP; no ACR is needed. Image delivery, private-pull credential ownership/rotation and secret handling remain open without inferring Key Vault. |
 | AI | Resolve concrete model deployments, embedding ownership/dimensions and authorized corpus lifecycle. |
 
