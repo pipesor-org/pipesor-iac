@@ -14,6 +14,9 @@
 - Give specialists the objective, owned files, constraints and acceptance checks.
   Allow only one writer per file. Use model/effort settings in native configuration;
   do not pass model overrides during delegation.
+- Delegate cloud feasibility, pricing, subscription-limit and infrastructure-option
+  research to `cloud_researcher`. It returns sourced recommendations for human
+  decisions; research does not approve architecture or authorize implementation.
 - Follow ADR 001 for branching, Angular-style Conventional Commits, PR validation
   and promotion. Preserve separate roots/states for `dev`, `qa`, `preprod`, `prod`;
   promote the same SHA sequentially with a fresh reviewed plan per environment.
