@@ -4,9 +4,10 @@ Terraform foundation for Pipesor's planned Microsoft Azure infrastructure, with 
 
 ## Current state
 
+- [MVP container platform](docs/mvp-resource-baseline.md) is opt-in per environment: a shared Consumption environment, VNet/delegated subnet and monitoring workspace. No service applications are defined.
 - [State bootstrap](docs/state-bootstrap.md) defines isolated state accounts and containers using required deployment inputs. No state store has been created; bootstrap state custody and real operations require separate authorization.
 - Four roots define one resource group each: `dev`, `qa`, `preprod` and `prod`. No Azure resources or remote backends have been deployed.
-- Subscription IDs and resource-group metadata locations are required inputs without defaults. Workload service resources, networking, SKUs, identities and secrets remain outside this increment.
+- Subscription IDs and resource-group metadata locations are required inputs without defaults. Service apps, data services, workload identities and secrets remain outside this increment; the optional platform requires explicit network allocation and telemetry limits.
 - Environment isolation and promotion are an accepted target strategy, not implemented deployment automation.
 - Azure credentials are unnecessary for working with the current foundation. Future resource and state operations follow the authorization requirements in [AGENTS.md](AGENTS.md#authorization).
 
@@ -39,7 +40,7 @@ test file. All tests replace AzAPI with a mock and use plan-only runs; `testregi
 and the UUID in tests are synthetic fixtures, not selected Azure inputs.
 
 ```sh
-for directory in modules/resource-group modules/state-store environments/dev environments/qa environments/preprod environments/prod bootstrap/dev bootstrap/qa bootstrap/preprod bootstrap/prod; do
+for directory in modules/resource-group modules/state-store modules/container-platform environments/dev environments/qa environments/preprod environments/prod bootstrap/dev bootstrap/qa bootstrap/preprod bootstrap/prod; do
   terraform -chdir="$directory" init -backend=false -input=false -lockfile=readonly
   terraform -chdir="$directory" validate
   terraform -chdir="$directory" test -filter=tests/contract.tftest.hcl
@@ -50,7 +51,7 @@ Run these checks without Azure write credentials. Backend-disabled initializatio
 does not connect to remote state. Validation and mocked plans do not prove Azure
 deployability, permissions, region availability, backend access or workload health.
 The [Terraform workflow](.github/workflows/terraform.yml) runs these credential-free
-checks for all ten directories on PRs and pushes to `main`; it has no Azure login,
+checks for all eleven directories on PRs and pushes to `main`; it has no Azure login,
 OIDC permission, plan artifact or deployment job.
 
 `terraform.tfvars.example` and `backend.tfbackend.example` beside each workload root document
@@ -73,6 +74,7 @@ The [Commitlint workflow](.github/workflows/commitlint.yml) validates hook confi
 - [Technical direction](docs/architecture.md): current foundation, intended layout, state handling, and provider/module selection criteria.
 - [Consumed architecture](docs/architecture-consumption.md): consulted documentation revision, evidence limits, supported scope and unresolved contracts.
 - [ADR 001](docs/adr-001-branching-and-promotion.md): environment isolation, promotion, approval requirements, and documented GitHub enforcement limitations.
+- [ADR 002 (proposed)](docs/adr-002-terraform-module-composition.md): module composition, capability boundaries and their distinction from state isolation.
 - [Agent and engineering guidance](AGENTS.md): coordination, documentation tools, authorization boundaries, and verification.
 - [Optional Codex setup](.codex/README.md): repository-local roles, configuration, and startup checks.
 - [lefthook.yml](lefthook.yml), [commitlint.config.js](commitlint.config.js), and [hook tests](tests/commit-msg.sh): local commit validation.

@@ -15,7 +15,7 @@ run "qa_root_contract" {
   command = plan
 
   assert {
-    condition     = output.resource_group.name == "rg-pipesor-qa"
+    condition     = output.resource_group.name == "rg-pipesor-qa" && output.container_platform == null && length(module.container_platform) == 0
     error_message = "This root must retain its own environment identity."
   }
 
@@ -43,4 +43,46 @@ run "reject_blank_location" {
   }
 
   expect_failures = [var.location]
+}
+
+run "opt_in_platform_contract" {
+  command = plan
+  variables {
+    container_platform = {
+      location                     = "workloadregion"
+      vnet_address_prefix          = "10.50.0.0/16"
+      infrastructure_subnet_prefix = "10.50.1.0/24"
+      log_retention_days           = 45
+      log_daily_cap_gb             = 0.5
+    }
+  }
+  override_resource {
+    target          = module.resource_group.module.resource_group.azapi_resource.this
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-qa" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.network
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-qa/providers/Microsoft.Network/virtualNetworks/vnet-pipesor-qa" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.subnet
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-qa/providers/Microsoft.Network/virtualNetworks/vnet-pipesor-qa/subnets/snet-pipesor-qa" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.workspace
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-qa/providers/Microsoft.OperationalInsights/workspaces/log-pipesor-qa" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.environment
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-qa/providers/Microsoft.App/managedEnvironments/caepipesorqa" }
+  }
+  assert {
+    condition     = output.container_platform.environment_name == "caepipesorqa" && output.container_platform.workspace_name == "log-pipesor-qa" && output.container_platform.network_name == "vnet-pipesor-qa" && length(module.container_platform) == 1
+    error_message = "Opt-in must create exactly this environment platform and preserve distinct environment names."
+  }
 }

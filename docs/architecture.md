@@ -1,10 +1,10 @@
 # Technical direction
 
-This foundation defines one resource group in each of four Terraform roots; it is
-not an Azure landing zone. No resources or remote backends have been deployed.
+This foundation defines one resource group in each of four Terraform roots and an
+optional shared MVP container platform per environment; it is not an Azure landing zone. No resources or remote backends have been deployed.
 Subscriptions and metadata locations are required inputs, with no selected values.
-Workload regions, networking, capacity, identity configuration and service delivery
-contracts remain undecided. The Azure service selections and their limits are
+Workload regions and network allocations require explicit inputs. Service capacity,
+identity configuration and delivery contracts remain undecided. The Azure service selections and their limits are
 recorded in [architecture consumption](architecture-consumption.md). No cloud CI
 identity or deployment workflow exists.
 Branching, environment isolation and promotion follow
@@ -50,6 +50,10 @@ See HashiCorp's [Azure backend reference](https://developer.hashicorp.com/terraf
 Use conventional `main.tf`, `variables.tf`, `outputs.tf`, `versions.tf` and root
 `providers.tf` files as needed. Declare typed, described and validated inputs.
 Follow the [HashiCorp style guide](https://developer.hashicorp.com/terraform/language/style).
+The current capability-based composition and proposed separation of shared network,
+monitoring and hosting responsibilities are recorded in
+[ADR 002](adr-002-terraform-module-composition.md). Module extraction and additional
+state boundaries are separate decisions; the proposed split is not implemented.
 Pin a tested CLI version when adding Terraform/CI, constrain provider versions,
 commit each root's `.terraform.lock.hcl`, and pin registry module versions
 explicitly (the provider lock file does not lock modules).
@@ -130,3 +134,13 @@ configuration denies other networks and grants explicit container-scoped Entra
 access. Account details, redundancy and recovery windows remain required inputs.
 These infrastructure state controls do not select workload storage, retention,
 secret management or network topology.
+
+## Shared MVP container platform
+
+The [MVP baseline](mvp-resource-baseline.md) records the user-approved Consumption,
+custom VNet, external-capable environment and shared workspace choices. Each root
+opts in through a nullable `container_platform` object; null adds no platform.
+The object requires workload location, private VNet/subnet CIDRs and telemetry
+retention/ingestion limits. The platform location is separate from resource-group
+metadata location. No service image, application, registry, database, broker, API
+perimeter or workload identity is defined by this increment.

@@ -2,3 +2,8 @@ output "resource_group" {
   description = "Resource-group contract for this environment only."
   value       = module.resource_group.resource_group
 }
+
+output "container_platform" {
+  description = "Platform contract, or null when this environment has not opted in."
+  value       = one(module.container_platform[*].platform)
+}
