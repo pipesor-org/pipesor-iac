@@ -13,6 +13,12 @@ Share infrastructure among services within an environment. Preserve separate
 [ADR 001](adr-001-branching-and-promotion.md). Four roots do not require four
 continuously provisioned workload stacks; promotion prerequisites still apply.
 
+Resource decisions follow this cost-optimized MVP direction without a $100 Azure
+for Students ceiling. Pay-as-you-go is the expected funding model, not a verified
+subscription upgrade. Use `cloud_researcher` to estimate the complete footprint
+before provisioning and compare forecasts with actual costs once deployed. This
+does not select remaining resource options or authorize spending or Azure writes.
+
 The user also explicitly selected a customer-managed VNet with a dedicated ACA
 subnet, an **external-capable** environment, and creation of a shared Log Analytics
 workspace for each provisioned environment. `modules/container-platform` implements
