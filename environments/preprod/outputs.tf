@@ -12,3 +12,8 @@ output "service_bus" {
   description = "Nonsecret namespace identity, or null when this environment has not opted in."
   value       = one(module.service_bus[*].namespace)
 }
+
+output "postgresql" {
+  description = "Private database identity, or null when not provisioned."
+  value       = one(module.postgresql[*].database)
+}

@@ -1,7 +1,7 @@
 # Technical direction
 
 This foundation defines one resource group in each of four Terraform roots and an
-optional shared MVP container platform and Service Bus namespace per environment; it is not an Azure landing zone. No resources or remote backends have been deployed.
+optional shared MVP container platform, Service Bus namespace and PostgreSQL server per environment; it is not an Azure landing zone. No resources or remote backends have been deployed.
 Subscriptions and metadata locations are required inputs, with no selected values.
 Workload regions and network allocations require explicit inputs. Service capacity,
 identity configuration and delivery contracts remain undecided. The Azure service selections and their limits are
@@ -153,3 +153,12 @@ authentication and minimum TLS 1.2. Each environment root opts in independently
 through `service_bus`; null adds no namespace. Namespace name and workload location
 are explicit inputs. No application delivery contract is required to define this
 shared dependency; messaging entities and runtime access remain separately gated.
+
+## Shared PostgreSQL foundation
+
+The [database baseline](mvp-resource-baseline.md#shared-postgresql-foundation)
+records the approved private Flexible Server configuration. Nullable `postgresql`
+inputs opt in through the existing roots/states and require the platform VNet in
+its region. A dedicated delegated subnet/private DNS and explicit Entra admin are
+created; no application SQL is executed. Network extraction under proposed ADR 002
+was evaluated and deferred to preserve existing replacement/address behavior.

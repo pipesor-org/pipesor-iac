@@ -40,3 +40,19 @@ variable "service_bus" {
   })
   default = null
 }
+
+variable "postgresql" {
+  description = "Opt in to the private Entra-only PostgreSQL MVP; requires the platform VNet. Removing deployed configuration proposes destruction."
+  type = object({
+    server_name   = string
+    location      = string
+    subnet_prefix = string
+    tenant_id     = string
+    administrator = object({ object_id = string, principal_name = string, principal_type = string })
+  })
+  default = null
+  validation {
+    condition     = var.postgresql == null || var.container_platform != null
+    error_message = "PostgreSQL requires the existing container platform VNet; opt in to container_platform first."
+  }
+}

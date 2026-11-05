@@ -15,7 +15,7 @@ run "prod_root_contract" {
   command = plan
 
   assert {
-    condition     = output.resource_group.name == "rg-pipesor-prod" && output.container_platform == null && length(module.container_platform) == 0 && output.service_bus == null && length(module.service_bus) == 0
+    condition     = output.resource_group.name == "rg-pipesor-prod" && output.container_platform == null && length(module.container_platform) == 0 && output.service_bus == null && output.postgresql == null && length(module.postgresql) == 0 && length(module.service_bus) == 0
     error_message = "This root must retain its own environment identity."
   }
 
@@ -113,4 +113,90 @@ run "opt_in_service_bus_contract" {
     condition     = output.service_bus.id == "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.ServiceBus/namespaces/test-pipesor-prod-bus"
     error_message = "The caller must expose the nonsecret namespace identity."
   }
+}
+
+run "opt_in_postgresql_contract" {
+  command = plan
+  variables {
+    container_platform = {
+      location                     = "workloadregion"
+      vnet_address_prefix          = "10.50.0.0/16"
+      infrastructure_subnet_prefix = "10.50.1.0/24"
+      log_retention_days           = 45
+      log_daily_cap_gb             = 0.5
+    }
+    postgresql = {
+      server_name   = "test-pipesor-prod-pg"
+      location      = "workloadregion"
+      subnet_prefix = "10.50.2.0/28"
+      tenant_id     = "11111111-1111-1111-1111-111111111111"
+      administrator = { object_id = "22222222-2222-2222-2222-222222222222", principal_name = "test-admins", principal_type = "Group" }
+    }
+
+  }
+  override_resource {
+    target          = module.resource_group.module.resource_group.azapi_resource.this
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.network
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.Network/virtualNetworks/vnet-pipesor-prod" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.subnet
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.Network/virtualNetworks/vnet-pipesor-prod/subnets/snet-pipesor-prod" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.workspace
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.OperationalInsights/workspaces/log-pipesor-prod" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.environment
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.App/managedEnvironments/caepipesorprod" }
+  }
+  assert {
+    condition     = output.container_platform.environment_name == "caepipesorprod" && output.container_platform.workspace_name == "log-pipesor-prod" && output.container_platform.network_name == "vnet-pipesor-prod" && length(module.container_platform) == 1
+    error_message = "Opt-in must create exactly this environment platform and preserve distinct environment names."
+  }
+
+  override_resource {
+    target          = module.postgresql[0].azapi_resource.subnet
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.Network/virtualNetworks/vnet-pipesor-prod/subnets/snet-pipesor-prod-postgresql" }
+  }
+
+  override_resource {
+    target          = module.postgresql[0].azapi_resource.dns
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.Network/privateDnsZones/pipesor-prod.postgres.database.azure.com" }
+  }
+
+  override_resource {
+    target          = module.postgresql[0].azapi_resource.server
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.DBforPostgreSQL/flexibleServers/test-pipesor-prod-pg", output = { properties = { fullyQualifiedDomainName = "fixture.postgres.database.azure.com" } } }
+  }
+
+  assert {
+    condition     = length(module.postgresql) == 1 && output.postgresql.name == "test-pipesor-prod-pg" && output.postgresql.fqdn == "fixture.postgres.database.azure.com" && output.postgresql.id == "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.DBforPostgreSQL/flexibleServers/test-pipesor-prod-pg"
+    error_message = "Wire this environment's private database and export its nonsecret identity."
+  }
+
+}
+
+run "reject_postgresql_without_platform" {
+  command = plan
+  variables {
+    postgresql = { server_name = "test-pipesor-dev-pg"
+      location      = "workloadregion"
+      subnet_prefix = "10.50.2.0/28"
+      tenant_id     = "11111111-1111-1111-1111-111111111111"
+    administrator = { object_id = "22222222-2222-2222-2222-222222222222", principal_name = "test-admins", principal_type = "Group" } }
+  }
+  expect_failures = [var.postgresql]
 }

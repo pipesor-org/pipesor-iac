@@ -59,6 +59,19 @@ export function checkCallerPlans(directory, stdout) {
     assert.ok(output, 'Missing platform output');
     for (const item of [network, subnet, workspace, platform]) assert.ok(item.id, 'Missing mocked resource ID');
     assert.deepEqual([output.environment_id, output.infrastructure_subnet_id, output.workspace_id, output.network_id], [platform.id, subnet.id, workspace.id, network.id], 'Caller resource ID exports');
+    const databasePlan = plan('opt_in_postgresql_contract');
+    const pgPrefix = 'module.postgresql[0].azapi_resource.';
+    const databaseNetwork = resource(databasePlan, prefix + 'network');
+    const pgSubnet = resource(databasePlan, pgPrefix + 'subnet');
+    const server = resource(databasePlan, pgPrefix + 'server');
+    const admin = resource(databasePlan, pgPrefix + 'administrator');
+    assert.equal(server.parent_id, group, 'Database caller resource group');
+    assert.equal(server.location, 'workloadregion', 'Database caller region');
+    assert.equal(server.name, `test-pipesor-${environment}-pg`, 'Database caller name');
+    assert.equal(pgSubnet.parent_id, databaseNetwork.id, 'Database caller VNet');
+    assert.equal(pgSubnet.body.properties.addressPrefix, '10.50.2.0/28', 'Database caller allocation');
+    assert.equal(admin.name, principals[0], 'Database caller administrator');
+    assert.equal(server.body.properties.authConfig.tenantId, subscription.split('/')[2], 'Database caller tenant');
   } else {
     const configured = plan(`${environment}_bootstrap_isolation`);
     const group = `${subscription}/resourceGroups/rg-pipesor-state-${environment}`;
@@ -85,7 +98,7 @@ export function checkCallerPlans(directory, stdout) {
 
 if (import.meta.main) {
   const directory = process.argv[2];
-  const module = /^modules\/(resource-group|state-store|container-platform|service-bus)$/.test(directory);
+  const module = /^modules\/(resource-group|state-store|container-platform|service-bus|postgresql)$/.test(directory);
   assert.ok(module || /^(environments|bootstrap)\/(dev|qa|preprod|prod)$/.test(directory), 'Select one reviewed Terraform directory');
   const command = ['terraform', `-chdir=${directory}`, 'test', '-filter=tests/contract.tftest.hcl'];
   if (!module) command.push('-json', '-verbose');
