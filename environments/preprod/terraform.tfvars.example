@@ -1,3 +1,14 @@
 # Replace with reviewed environment values; these placeholders are not deployment inputs.
 subscription_id = "<target-subscription-uuid>"
 location        = "<approved-azure-region-code>"
+
+# Keep null until this environment is explicitly selected for platform provisioning.
+container_platform = null
+# Replace every placeholder with reviewed values to opt in:
+# container_platform = {
+#   location = "<approved-workload-region>"
+#   vnet_address_prefix = "<approved-private-vnet-cidr>"
+#   infrastructure_subnet_prefix = "<approved-dedicated-aca-subnet-cidr>"
+#   log_retention_days = <approved-integer-30-to-730>
+#   log_daily_cap_gb = <approved-positive-ingestion-limit>
+# }

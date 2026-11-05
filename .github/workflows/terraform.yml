@@ -17,6 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         directory:
+          - modules/container-platform
           - modules/state-store
           - bootstrap/dev
           - bootstrap/qa

@@ -4,3 +4,11 @@ module "resource_group" {
   environment = "prod"
   location    = var.location
 }
+
+module "container_platform" {
+  count             = var.container_platform == null ? 0 : 1
+  source            = "../../modules/container-platform"
+  environment       = "prod"
+  resource_group_id = module.resource_group.resource_group.id
+  configuration     = var.container_platform
+}

@@ -19,3 +19,15 @@ variable "location" {
     error_message = "Location must be a nonempty lowercase Azure region code without whitespace."
   }
 }
+
+variable "container_platform" {
+  description = "Opt in to the shared Consumption platform with approved allocation and telemetry limits; null provisions no platform. Removing a deployed configuration proposes destruction."
+  type = object({
+    location                     = string
+    vnet_address_prefix          = string
+    infrastructure_subnet_prefix = string
+    log_retention_days           = number
+    log_daily_cap_gb             = number
+  })
+  default = null
+}
