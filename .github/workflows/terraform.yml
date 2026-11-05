@@ -44,6 +44,9 @@ jobs:
         with:
           terraform_version: ${{ steps.terraform.outputs.version }}
           terraform_wrapper: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
       - run: git diff --check
       - run: terraform fmt -check -recursive
       - name: Initialize without state access
@@ -52,6 +55,5 @@ jobs:
       - name: Validate
         working-directory: ${{ matrix.directory }}
         run: terraform validate
-      - name: Test reviewed mocked plans
-        working-directory: ${{ matrix.directory }}
-        run: terraform test -filter=tests/contract.tftest.hcl
+      - name: Test reviewed mocked plans and caller contracts
+        run: bun tests/terraform-contracts.js "${{ matrix.directory }}"

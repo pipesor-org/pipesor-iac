@@ -37,6 +37,7 @@ for subject in \
   'update docs' \
   'unknown: explain setup' \
   'Fix: handle input' \
+  'feat(API): change endpoint' \
   'fix: ' \
   'fix: Handle input' \
   'fix: handle Input' \

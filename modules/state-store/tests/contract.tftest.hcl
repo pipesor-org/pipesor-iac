@@ -47,7 +47,7 @@ run "security_recovery_and_access_contract" {
     error_message = "Explicit redundancy and location must reach the planned account."
   }
   assert {
-    condition     = module.blob_service.resource.body.properties.isVersioningEnabled == true && module.blob_service.resource.body.properties.deleteRetentionPolicy.enabled == true && module.blob_service.resource.body.properties.deleteRetentionPolicy.days == 17 && module.blob_service.resource.body.properties.containerDeleteRetentionPolicy.enabled == true && module.blob_service.resource.body.properties.containerDeleteRetentionPolicy.days == 17
+    condition     = module.blob_service.resource.body.properties.isVersioningEnabled == true && module.blob_service.resource.body.properties.deleteRetentionPolicy.allowPermanentDelete == false && module.blob_service.resource.body.properties.deleteRetentionPolicy.enabled == true && module.blob_service.resource.body.properties.deleteRetentionPolicy.days == 17 && module.blob_service.resource.body.properties.containerDeleteRetentionPolicy.allowPermanentDelete == false && module.blob_service.resource.body.properties.containerDeleteRetentionPolicy.enabled == true && module.blob_service.resource.body.properties.containerDeleteRetentionPolicy.days == 17
     error_message = "State versioning and both soft-delete policies must retain the explicitly selected recovery window."
   }
   assert {
@@ -313,4 +313,66 @@ override_resource {
   target          = module.container.azapi_resource.this
   override_during = plan
   values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-state-dev/providers/Microsoft.Storage/storageAccounts/fixture/blobServices/default/containers/tfstate-dev" }
+}
+
+run "reject_loopback" {
+  command = plan
+  variables {
+    settings = merge(var.settings, { allowed_ips = ["127.0.0.1"] })
+  }
+  expect_failures = [var.settings]
+}
+
+run "reject_private_172" {
+  command = plan
+  variables {
+    settings = merge(var.settings, { allowed_ips = ["172.16.1.2"] })
+  }
+  expect_failures = [var.settings]
+}
+
+run "reject_private_192" {
+  command = plan
+  variables {
+    settings = merge(var.settings, { allowed_ips = ["192.168.1.2"] })
+  }
+  expect_failures = [var.settings]
+}
+
+run "reject_link_local" {
+  command = plan
+  variables {
+    settings = merge(var.settings, { allowed_ips = ["169.254.1.2"] })
+  }
+  expect_failures = [var.settings]
+}
+
+run "reject_unsupported_slash31" {
+  command = plan
+  variables {
+    settings = merge(var.settings, { allowed_ips = ["198.51.100.0/31"] })
+  }
+  expect_failures = [var.settings]
+}
+
+run "accept_recovery_1_and_smallest_egress_range" {
+  command = plan
+  variables {
+    settings = merge(var.settings, { recovery_days = 1, allowed_ips = ["198.51.100.0/30"] })
+  }
+  assert {
+    condition     = module.blob_service.resource.body.properties.deleteRetentionPolicy.days == 1 && module.blob_service.resource.body.properties.containerDeleteRetentionPolicy.days == 1 && toset([for rule in module.storage.resource.body.properties.networkAcls.ipRules : rule.value]) == toset(["198.51.100.0/30"])
+    error_message = "Supported recovery and operator CIDR boundaries must reach the effective resources."
+  }
+}
+
+run "accept_recovery_365_and_smallest_egress_range" {
+  command = plan
+  variables {
+    settings = merge(var.settings, { recovery_days = 365, allowed_ips = ["198.51.100.0/30"] })
+  }
+  assert {
+    condition     = module.blob_service.resource.body.properties.deleteRetentionPolicy.days == 365 && module.blob_service.resource.body.properties.containerDeleteRetentionPolicy.days == 365 && toset([for rule in module.storage.resource.body.properties.networkAcls.ipRules : rule.value]) == toset(["198.51.100.0/30"])
+    error_message = "Supported recovery and operator CIDR boundaries must reach the effective resources."
+  }
 }

@@ -43,7 +43,7 @@ and the UUID in tests are synthetic fixtures, not selected Azure inputs.
 for directory in modules/resource-group modules/state-store modules/container-platform environments/dev environments/qa environments/preprod environments/prod bootstrap/dev bootstrap/qa bootstrap/preprod bootstrap/prod; do
   terraform -chdir="$directory" init -backend=false -input=false -lockfile=readonly
   terraform -chdir="$directory" validate
-  terraform -chdir="$directory" test -filter=tests/contract.tftest.hcl
+  bun tests/terraform-contracts.js "$directory"
 done
 ```
 
@@ -53,6 +53,12 @@ deployability, permissions, region availability, backend access or workload heal
 The [Terraform workflow](.github/workflows/terraform.yml) runs these credential-free
 checks for all eleven directories on PRs and pushes to `main`; it has no Azure login,
 OIDC permission, plan artifact or deployment job.
+
+The test runner also inspects the effective mocked plans for environment and
+bootstrap callers, checking network/telemetry inputs and state recovery/access
+inputs at the resource boundary. It requires the expected successful plans and
+does not save or print plan JSON. Mocked provider outputs do not verify provider
+authentication or the target subscription selected by the real provider.
 
 `terraform.tfvars.example` and `backend.tfbackend.example` beside each workload root document
 required inputs with placeholders. Backend creation and access setup are a separate
