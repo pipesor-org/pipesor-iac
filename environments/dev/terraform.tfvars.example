@@ -12,3 +12,10 @@ container_platform = null
 #   log_retention_days = <approved-integer-30-to-730>
 #   log_daily_cap_gb = <approved-positive-ingestion-limit>
 # }
+
+# Opt in only with reviewed values; namespace names must be globally available and distinct per environment.
+service_bus = null
+# service_bus = {
+#   namespace_name = "<approved-globally-unique-namespace-name>"
+#   location       = "<approved-workload-region>"
+# }

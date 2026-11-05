@@ -7,3 +7,8 @@ output "container_platform" {
   description = "Platform contract, or null when this environment has not opted in."
   value       = one(module.container_platform[*].platform)
 }
+
+output "service_bus" {
+  description = "Nonsecret namespace identity, or null when this environment has not opted in."
+  value       = one(module.service_bus[*].namespace)
+}

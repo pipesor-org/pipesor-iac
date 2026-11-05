@@ -34,10 +34,10 @@ exposure.
 | Container Apps network | Custom VNet, dedicated delegated subnet and external-capable environment are selected. Actual address allocation, region and connectivity to later dependencies remain explicit inputs/decisions. |
 | Monitoring | One shared workspace per provisioned environment and Azure Monitor log routing are selected. Actual retention and ingestion limits require explicit inputs; application telemetry remains part of service delivery. |
 | Database | Accept hosting service/tier, region, connectivity and capacity. PostgreSQL/pgvector and existing data ownership remain established; managed HA is not assumed. |
-| Messaging | Accept Standard namespace configuration, modeled topology evidence, access and delivery contracts. |
+| Messaging | A public, Entra-only Standard namespace is approved for local implementation. Exact entities/topology evidence (PD-015), runtime access and delivery contracts remain open. |
 | API perimeter | Prove the selected APIM tier can reach protected backends and prevent authorization bypass. Consumption remains a candidate pending that proof. |
 | Evidence storage | Agree workload access, recovery and retention mechanics; Terraform state storage is separate. |
-| Images and credentials | Select registry ownership and image delivery; resolve credential/secret handling without inferring Key Vault. |
+| Images and credentials | GHCR is selected for the MVP; no ACR is needed. Image delivery, private-pull credential ownership/rotation and secret handling remain open without inferring Key Vault. |
 | AI | Resolve concrete model deployments, embedding ownership/dimensions and authorized corpus lifecycle. |
 
 Account identifiers, region and environment-specific values can remain required
@@ -153,3 +153,56 @@ References: [ACA networking](https://learn.microsoft.com/en-us/azure/container-a
 [environment AVM 0.3.0](https://github.com/Azure/terraform-azurerm-avm-res-app-managedenvironment/tree/v0.3.0),
 [VNet AVM 0.23.0](https://github.com/Azure/terraform-azurerm-avm-res-network-virtualnetwork/tree/v0.23.0)
 and [workspace AVM 0.5.1](https://github.com/Azure/terraform-azurerm-avm-res-operationalinsights-workspace/tree/v0.5.1).
+
+## Shared messaging foundation
+
+The user approved one optional Service Bus Standard namespace per provisioned
+environment with a public endpoint and Entra-only authentication. The existing
+roots/states remain isolated. `service_bus = null` adds no namespace; opting in
+requires `namespace_name` and `location` as shown in each root's placeholder file.
+Names must be distinct across environments and globally available. The contract
+accepts 6–50 lowercase letters, digits and hyphens, starting with a letter and
+ending with a letter or digit. As with state storage, explicit reviewed names are
+used instead of generated names or new randomness; local validation cannot reserve
+names or prove regional availability. The workload location need not match the
+resource-group metadata location.
+
+`modules/service-bus` fixes the SKU to Standard, disables SAS/local authentication
+and explicitly requires TLS 1.2. Public access means an internet-reachable endpoint,
+not anonymous access or an IP allowlist. No network rule set, trusted-service bypass,
+private endpoint, service identity or data-plane grant is configured. Authorized
+Entra identities and their scoped permissions must be agreed before message flow.
+No keys or connection strings are read or exported. Azure may create default
+service-managed authorization rules; disabling local authentication prevents SAS
+use rather than proving that no server-side key material exists.
+
+Topics, subscriptions, delivery settings and event contracts remain outside this
+increment. The modeled topology's PD-015 approval-provenance gap remains open; this
+namespace approval does not resolve it. The existing shared network/workspace are
+not consumed by this namespace, so no proposed ADR 002 extraction is needed here.
+GHCR remains the chosen MVP image registry and does not select a credential store.
+
+A provisioned Standard namespace incurs base charges even without message traffic;
+null is a provisioning choice, not a runtime pause. Removing an opted-in object
+proposes deletion, and changing a namespace name or location can replace it and
+remove future messaging entities/messages. Review plans, downtime/data preservation
+and explicit target/action authorization before any real operation. No resources
+have been deployed or imported by this implementation.
+
+Terraform 1.17.1 and AzAPI 2.9.0 remain selected; the stable namespace API is
+`Microsoft.ServiceBus/namespaces@2024-01-01`. Embedded schema validation remains
+enabled. The Service Bus AVM 0.5.0 was evaluated through Terraform MCP and its tagged
+source: it requires AzAPI `~> 2.12` plus AzureRM `~> 4.14`. Introducing it would require
+an intentional provider/dependency change. The small local composition preserves
+the selected provider and enforces the repeated Standard/public/Entra/TLS contract;
+no AzureRM provider or dependency upgrade is introduced. Context7's official AVM
+coverage was supplemented with the tagged source and Microsoft ARM/authentication
+references. The versioned ARM reference below supplies the resource contract.
+
+Sources checked 2026-11-05:
+
+- [Service Bus AVM 0.5.0 provider requirements](https://github.com/Azure/terraform-azurerm-avm-res-servicebus-namespace/blob/v0.5.0/terraform.tf)
+- [Namespace ARM API 2024-01-01](https://learn.microsoft.com/en-us/azure/templates/microsoft.servicebus/2024-01-01/namespaces)
+- [Disable local authentication](https://learn.microsoft.com/en-us/azure/service-bus-messaging/disable-local-authentication)
+- [Minimum TLS configuration](https://learn.microsoft.com/en-us/azure/service-bus-messaging/transport-layer-security-configure-minimum-version)
+- [Azure resource naming rules](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules#microsoftservicebus)

@@ -1,7 +1,7 @@
 # Technical direction
 
 This foundation defines one resource group in each of four Terraform roots and an
-optional shared MVP container platform per environment; it is not an Azure landing zone. No resources or remote backends have been deployed.
+optional shared MVP container platform and Service Bus namespace per environment; it is not an Azure landing zone. No resources or remote backends have been deployed.
 Subscriptions and metadata locations are required inputs, with no selected values.
 Workload regions and network allocations require explicit inputs. Service capacity,
 identity configuration and delivery contracts remain undecided. The Azure service selections and their limits are
@@ -142,5 +142,14 @@ custom VNet, external-capable environment and shared workspace choices. Each roo
 opts in through a nullable `container_platform` object; null adds no platform.
 The object requires workload location, private VNet/subnet CIDRs and telemetry
 retention/ingestion limits. The platform location is separate from resource-group
-metadata location. No service image, application, registry, database, broker, API
+metadata location. No service image, application, registry, database, API
 perimeter or workload identity is defined by this increment.
+
+## Shared messaging foundation
+
+The [MVP baseline](mvp-resource-baseline.md#shared-messaging-foundation) records the
+approved optional Service Bus Standard namespace with a public endpoint, Entra-only
+authentication and minimum TLS 1.2. Each environment root opts in independently
+through `service_bus`; null adds no namespace. Namespace name and workload location
+are explicit inputs. No application delivery contract is required to define this
+shared dependency; messaging entities and runtime access remain separately gated.

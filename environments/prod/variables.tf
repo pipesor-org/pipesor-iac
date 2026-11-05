@@ -31,3 +31,12 @@ variable "container_platform" {
   })
   default = null
 }
+
+variable "service_bus" {
+  description = "Opt in to the approved public, Entra-only Standard namespace; null provisions none. Removing a deployed configuration proposes destruction."
+  type = object({
+    namespace_name = string
+    location       = string
+  })
+  default = null
+}
