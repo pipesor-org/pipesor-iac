@@ -12,3 +12,11 @@ module "container_platform" {
   resource_group_id = module.resource_group.resource_group.id
   configuration     = var.container_platform
 }
+
+module "service_bus" {
+  count             = var.service_bus == null ? 0 : 1
+  source            = "../../modules/service-bus"
+  environment       = "preprod"
+  resource_group_id = module.resource_group.resource_group.id
+  configuration     = var.service_bus
+}

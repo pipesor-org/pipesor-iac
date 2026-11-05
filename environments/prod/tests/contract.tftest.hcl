@@ -15,7 +15,7 @@ run "prod_root_contract" {
   command = plan
 
   assert {
-    condition     = output.resource_group.name == "rg-pipesor-prod" && output.container_platform == null && length(module.container_platform) == 0
+    condition     = output.resource_group.name == "rg-pipesor-prod" && output.container_platform == null && length(module.container_platform) == 0 && output.service_bus == null && length(module.service_bus) == 0
     error_message = "This root must retain its own environment identity."
   }
 
@@ -84,5 +84,33 @@ run "opt_in_platform_contract" {
   assert {
     condition     = output.container_platform.environment_name == "caepipesorprod" && output.container_platform.workspace_name == "log-pipesor-prod" && output.container_platform.network_name == "vnet-pipesor-prod" && length(module.container_platform) == 1
     error_message = "Opt-in must create exactly this environment platform and preserve distinct environment names."
+  }
+}
+
+run "opt_in_service_bus_contract" {
+  command = plan
+  variables {
+    service_bus = {
+      namespace_name = "test-pipesor-prod-bus"
+      location       = "messagingregion"
+    }
+  }
+  override_resource {
+    target          = module.resource_group.module.resource_group.azapi_resource.this
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod" }
+  }
+  override_resource {
+    target          = module.service_bus[0].azapi_resource.namespace
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.ServiceBus/namespaces/test-pipesor-prod-bus" }
+  }
+  assert {
+    condition     = length(module.service_bus) == 1 && output.service_bus.name == "test-pipesor-prod-bus" && output.service_bus.location == "messagingregion" && output.container_platform == null
+    error_message = "Messaging must opt in independently, preserving the supplied namespace name and workload region."
+  }
+  assert {
+    condition     = output.service_bus.id == "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.ServiceBus/namespaces/test-pipesor-prod-bus"
+    error_message = "The caller must expose the nonsecret namespace identity."
   }
 }
