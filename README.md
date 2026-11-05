@@ -4,6 +4,8 @@ Terraform foundation for Pipesor's planned Microsoft Azure infrastructure, with 
 
 ## Current state
 
+- [Application Insights](docs/mvp-resource-baseline.md#shared-backend-application-insights) is opt-in per environment, linked to the existing workspace with Entra-only ingestion. Instrumentation and service grants remain deferred.
+
 - [PostgreSQL foundation](docs/mvp-resource-baseline.md#shared-postgresql-foundation) is opt-in: private PG17/B2s, 32 GiB, Entra-only and seven-day local backups; requires the existing platform VNet. SQL schemas, extensions and runtime grants are deferred.
 
 - [Service Bus foundation](docs/mvp-resource-baseline.md#shared-messaging-foundation) is opt-in per environment: one public, Entra-only Standard namespace. Messaging entities and service grants remain deferred.
@@ -43,7 +45,7 @@ test file. All tests replace AzAPI with a mock and use plan-only runs; `testregi
 and the UUID in tests are synthetic fixtures, not selected Azure inputs.
 
 ```sh
-for directory in modules/resource-group modules/state-store modules/container-platform modules/service-bus modules/postgresql environments/dev environments/qa environments/preprod environments/prod bootstrap/dev bootstrap/qa bootstrap/preprod bootstrap/prod; do
+for directory in modules/resource-group modules/state-store modules/container-platform modules/service-bus modules/postgresql modules/application-insights environments/dev environments/qa environments/preprod environments/prod bootstrap/dev bootstrap/qa bootstrap/preprod bootstrap/prod; do
   terraform -chdir="$directory" init -backend=false -input=false -lockfile=readonly
   terraform -chdir="$directory" validate
   bun tests/terraform-contracts.js "$directory"
@@ -54,7 +56,7 @@ Run these checks without Azure write credentials. Backend-disabled initializatio
 does not connect to remote state. Validation and mocked plans do not prove Azure
 deployability, permissions, region availability, backend access or workload health.
 The [Terraform workflow](.github/workflows/terraform.yml) runs these credential-free
-checks for all thirteen directories on PRs and pushes to `main`; it has no Azure login,
+checks for all fourteen directories on PRs and pushes to `main`; it has no Azure login,
 OIDC permission, plan artifact or deployment job.
 
 The test runner also inspects the effective mocked plans for environment and

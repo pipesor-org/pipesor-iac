@@ -17,3 +17,8 @@ output "postgresql" {
   description = "Private database identity, or null when not provisioned."
   value       = one(module.postgresql[*].database)
 }
+
+output "application_insights" {
+  description = "Backend telemetry routing, or null when disabled; publishing data still requires approved Entra access."
+  value       = one(module.application_insights[*].telemetry)
+}

@@ -33,3 +33,6 @@ postgresql = null
 #     principal_type = "<Group-User-or-ServicePrincipal>"
 #   }
 # }
+
+# Requires container_platform; shares its workspace/location. No app instrumentation is configured.
+application_insights_enabled = false

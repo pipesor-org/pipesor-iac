@@ -15,7 +15,7 @@ run "prod_root_contract" {
   command = plan
 
   assert {
-    condition     = output.resource_group.name == "rg-pipesor-prod" && output.container_platform == null && length(module.container_platform) == 0 && output.service_bus == null && output.postgresql == null && length(module.postgresql) == 0 && length(module.service_bus) == 0
+    condition     = output.application_insights == null && length(module.application_insights) == 0 && output.resource_group.name == "rg-pipesor-prod" && output.container_platform == null && length(module.container_platform) == 0 && output.service_bus == null && output.postgresql == null && length(module.postgresql) == 0 && length(module.service_bus) == 0
     error_message = "This root must retain its own environment identity."
   }
 
@@ -199,4 +199,61 @@ run "reject_postgresql_without_platform" {
     administrator = { object_id = "22222222-2222-2222-2222-222222222222", principal_name = "test-admins", principal_type = "Group" } }
   }
   expect_failures = [var.postgresql]
+}
+
+run "opt_in_application_insights_contract" {
+  command = plan
+  variables {
+    application_insights_enabled = true
+    container_platform = {
+      location                     = "workloadregion"
+      vnet_address_prefix          = "10.50.0.0/16"
+      infrastructure_subnet_prefix = "10.50.1.0/24"
+      log_retention_days           = 45
+      log_daily_cap_gb             = 0.5
+    }
+  }
+  override_resource {
+    target          = module.resource_group.module.resource_group.azapi_resource.this
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.network
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.Network/virtualNetworks/vnet-pipesor-prod" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.subnet
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.Network/virtualNetworks/vnet-pipesor-prod/subnets/snet-pipesor-prod" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.workspace
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.OperationalInsights/workspaces/log-pipesor-prod" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.environment
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.App/managedEnvironments/caepipesorprod" }
+  }
+  assert {
+    condition     = output.container_platform.environment_name == "caepipesorprod" && output.container_platform.workspace_name == "log-pipesor-prod" && output.container_platform.network_name == "vnet-pipesor-prod" && length(module.container_platform) == 1
+    error_message = "Opt-in must create exactly this environment platform and preserve distinct environment names."
+  }
+  override_resource {
+    target          = module.application_insights[0].azapi_resource.component
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-prod/providers/Microsoft.Insights/components/appipipesorprod", output = { properties = { ConnectionString = "synthetic-routing-fixture" } } }
+  }
+  assert {
+    condition     = length(module.application_insights) == 1 && output.application_insights.name == "appipipesorprod" && output.application_insights.connection_string == "synthetic-routing-fixture"
+    error_message = "Create exactly one component for this environment with the service-reported routing output."
+  }
+}
+run "reject_insights_without_workspace" {
+  command = plan
+  variables { application_insights_enabled = true }
+  expect_failures = [var.application_insights_enabled]
 }

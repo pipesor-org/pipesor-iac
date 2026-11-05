@@ -162,3 +162,10 @@ inputs opt in through the existing roots/states and require the platform VNet in
 its region. A dedicated delegated subnet/private DNS and explicit Entra admin are
 created; no application SQL is executed. Network extraction under proposed ADR 002
 was evaluated and deferred to preserve existing replacement/address behavior.
+
+## Shared backend Application Insights
+
+The [MVP baseline](mvp-resource-baseline.md#shared-backend-application-insights)
+records one optional workspace-based component per environment. It reuses the
+platform workspace and location, with Entra-only authentication and public
+endpoints. No application instrumentation or service identity is created.

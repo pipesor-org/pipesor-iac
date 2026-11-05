@@ -34,7 +34,7 @@ function environmentEvents() {
     resource(pgPrefix + 'server', { parent_id: group, location: 'workloadregion', name: 'test-pipesor-qa-pg', body: { properties: { authConfig: { tenantId: subscription.split('/')[2] } } } }),
     resource(pgPrefix + 'administrator', { name: principals[0] }),
   ] };
-  return [...eventsFor('qa_root_contract', { resource_changes: [] }), ...eventsFor('opt_in_platform_contract', enabled), ...eventsFor('opt_in_postgresql_contract', databasePlan), summary];
+  return [...eventsFor('qa_root_contract', { resource_changes: [] }), ...eventsFor('opt_in_platform_contract', enabled), ...eventsFor('opt_in_postgresql_contract', databasePlan), ...eventsFor('opt_in_application_insights_contract', { resource_changes: [resource('module.container_platform[0].azapi_resource.workspace', workspace), resource('module.application_insights[0].azapi_resource.component', { parent_id: group, location: 'workloadregion', name: 'appipipesorqa', body: { properties: { WorkspaceResourceId: workspace.id, DisableLocalAuth: true } } })] }), summary];
 }
 
 function bootstrapEvents(environment = 'prod', account = 'pipesorstatefixtureprod') {
@@ -118,4 +118,11 @@ test('rejects corrupted database caller VNet forwarding', () => {
   const plan = events.find(event => event.type === 'test_plan' && event['@testrun'] === 'opt_in_postgresql_contract').test_plan;
   plan.resource_changes.find(resource => resource.address === 'module.postgresql[0].azapi_resource.subnet').change.after.parent_id = subscription;
   expect(() => checkCallerPlans('environments/qa', encode(events))).toThrow('Database caller VNet');
+});
+
+test('rejects telemetry sent to another workspace', () => {
+  const events = environmentEvents();
+  const plan = events.find(event => event.type === 'test_plan' && event['@testrun'] === 'opt_in_application_insights_contract').test_plan;
+  plan.resource_changes.find(item => item.address === 'module.application_insights[0].azapi_resource.component').change.after.body.properties.WorkspaceResourceId = 'wrong-workspace';
+  expect(() => checkCallerPlans('environments/qa', encode(events))).toThrow('Telemetry caller workspace forwarding');
 });
