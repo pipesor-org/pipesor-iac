@@ -35,6 +35,21 @@ override_resource {
 run "consumption_network_and_logs_contract" {
   command = plan
   assert {
+    condition = alltrue([
+      for resource in [azapi_resource.network, azapi_resource.workspace, azapi_resource.environment] :
+      resource.parent_id == var.resource_group_id && resource.location == var.configuration.location
+    ])
+    error_message = "Every top-level platform resource must use the caller's resource group and workload location."
+  }
+  assert {
+    condition     = output.platform.environment_id == azapi_resource.environment.id && output.platform.infrastructure_subnet_id == azapi_resource.subnet.id && output.platform.workspace_id == azapi_resource.workspace.id && output.platform.network_id == azapi_resource.network.id
+    error_message = "Export each resource's own ID for downstream service wiring."
+  }
+  assert {
+    condition     = toset(azapi_resource.network.replace_triggers_refs) == toset(["properties.addressSpace.addressPrefixes"]) && toset(azapi_resource.subnet.replace_triggers_refs) == toset(["properties.addressPrefix"]) && toset(azapi_resource.environment.replace_triggers_refs) == toset(["properties.vnetConfiguration", "properties.zoneRedundant", "properties.workloadProfiles"]) && azapi_resource.environment.replace_triggers_external_values == { vnet_prefix = var.configuration.vnet_address_prefix, subnet_prefix = var.configuration.infrastructure_subnet_prefix }
+    error_message = "Keep the declared allocation replacement triggers; mocked plans do not establish provider replacement behavior."
+  }
+  assert {
     condition     = azapi_resource.environment.body.properties.workloadProfiles == [{ name = "Consumption", workloadProfileType = "Consumption" }] && azapi_resource.environment.body.properties.zoneRedundant == false
     error_message = "Use exactly one Consumption profile without Dedicated capacity or zone redundancy."
   }
@@ -137,7 +152,7 @@ run "reject_public_network" {
     configuration = {
       location                     = "workloadregion"
       vnet_address_prefix          = "203.0.113.0/24"
-      infrastructure_subnet_prefix = "10.50.1.0/24"
+      infrastructure_subnet_prefix = "203.0.113.0/27"
       log_retention_days           = 45
       log_daily_cap_gb             = 0.5
     }
