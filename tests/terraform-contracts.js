@@ -36,6 +36,7 @@ export function checkCallerPlans(directory, stdout) {
     const baseline = plan(`${environment}_root_contract`);
     assert.ok(!(baseline.resource_changes ?? []).some(change => change.address.startsWith('module.foundry[')), 'Opt-out must plan no Foundry resources');
     assert.ok(!(baseline.resource_changes ?? []).some(change => change.address.startsWith('module.container_platform[')), 'Opt-out must plan no platform resources');
+    assert.ok(!(baseline.resource_changes ?? []).some(change => change.address.startsWith('module.static_web_app[')), 'Opt-out must plan no static hosting');
     const enabled = plan('opt_in_platform_contract');
     const group = `${subscription}/resourceGroups/rg-pipesor-${environment}`;
     const rg = resource(enabled, 'module.resource_group.module.resource_group.azapi_resource.this');
@@ -60,6 +61,18 @@ export function checkCallerPlans(directory, stdout) {
     assert.ok(output, 'Missing platform output');
     for (const item of [network, subnet, workspace, platform]) assert.ok(item.id, 'Missing mocked resource ID');
     assert.deepEqual([output.environment_id, output.infrastructure_subnet_id, output.workspace_id, output.network_id], [platform.id, subnet.id, workspace.id, network.id], 'Caller resource ID exports');
+    const webPlan = plan('opt_in_static_web_app_contract');
+    assert.deepEqual(webPlan.resource_changes.filter(change => change.address.startsWith('module.static_web_app[')).map(change => change.address), ['module.static_web_app[0].azapi_resource.site'], 'Static hosting scope contains only one site');
+    const web = resource(webPlan, 'module.static_web_app[0].azapi_resource.site');
+    assert.equal(web.parent_id, group, 'Static hosting caller resource group');
+    assert.equal(web.location, 'webregion', 'Static hosting caller region');
+    assert.equal(web.name, `test-pipesor-${environment}-web`, 'Static hosting caller name');
+    assert.equal(web.tags.environment, environment, 'Static hosting caller environment');
+    assert.deepEqual(web.body, {
+      sku: { name: 'Free', tier: 'Free' },
+      properties: { publicNetworkAccess: 'Enabled', enterpriseGradeCdnStatus: 'Disabled', stagingEnvironmentPolicy: 'Disabled', buildProperties: { skipGithubActionWorkflowGeneration: true } },
+    }, 'Static hosting must remain Free and detached from authentication and delivery');
+    assert.deepEqual(webPlan.output_changes.static_web_app.after, { id: web.id, name: web.name, location: 'webregion', default_hostname: web.output.properties.defaultHostname }, 'Static hosting caller interface');
     const foundryPlan = plan('opt_in_foundry_contract');
     assert.deepEqual(foundryPlan.resource_changes.filter(change => change.address.startsWith('module.foundry[')).map(change => change.address).sort(), ['module.foundry[0].azapi_resource.account', 'module.foundry[0].azapi_resource.project'], 'Foundry scope contains only account and project');
     const account = resource(foundryPlan, 'module.foundry[0].azapi_resource.account');
@@ -124,7 +137,7 @@ export function checkCallerPlans(directory, stdout) {
 
 if (import.meta.main) {
   const directory = process.argv[2];
-  const module = /^modules\/(resource-group|state-store|container-platform|service-bus|postgresql|application-insights|foundry)$/.test(directory);
+  const module = /^modules\/(resource-group|state-store|container-platform|service-bus|postgresql|application-insights|foundry|static-web-app)$/.test(directory);
   assert.ok(module || /^(environments|bootstrap)\/(dev|qa|preprod|prod)$/.test(directory), 'Select one reviewed Terraform directory');
   const command = ['terraform', `-chdir=${directory}`, 'test', '-filter=tests/contract.tftest.hcl'];
   if (!module) command.push('-json', '-verbose');

@@ -45,6 +45,10 @@ The separate Azure Blob backend for Terraform state remains in scope.
 
 ## Decisions still required for the affected resources
 
+The [domain and hosting reconciliation](domain-hosting-reconciliation.md) records
+the proposed Workers/SWA/ACA domain split, approved Free hosting and pending frontend authentication,
+API routing and runtime configuration contracts. It authorizes no domain bindings.
+
 | Area | Remaining decision or evidence |
 | --- | --- |
 | Container Apps network | Custom VNet, dedicated delegated subnet and external-capable environment are selected. Actual address allocation, region and connectivity to later dependencies remain explicit inputs/decisions. |
@@ -404,3 +408,60 @@ requires it. The whole-solution planning budget is $300/month excluding credits;
 exact model usage/rates and the complete cost forecast remain unverified. Budgets
 and alerts are not hard spend caps. Four roots do not require four active accounts.
 Canonical architecture reconciliation remains separate in `pipesor-docs`.
+
+## Static Web Apps Free hosting
+
+Accepted by the project owner on 2026-11-06 for the controlled MVP: use Azure
+Static Web Apps **Free** with a publicly accessible static application shell.
+Frontend assets must contain no sensitive information or secrets. The application
+will use single-tenant Microsoft Entra authentication; ACA APIs must independently
+validate tokens and enforce resource-level authorization. This hosting foundation
+does not implement those contracts or establish production readiness.
+
+Each existing environment root opts in through `static_web_app = { name, location }`;
+null adds no site. Region and name are explicit, independently of resource-group
+metadata location. The module exports ID, name, location and Azure's default HTTPS
+hostname, not deployment credentials. Azure generates the hostname; it is not the
+proposed `app.pipesor.com` contract. No content is uploaded by resource creation.
+
+The single `Microsoft.Web/staticSites@2024-11-01` resource fixes SKU name/tier to
+Free, public network access enabled, enterprise-grade CDN disabled, staging
+(preview) environments disabled and GitHub workflow generation skipped. There is
+no repository URL/token, identity, API link, app settings, authentication resource,
+custom domain or deployment workflow. Existing credential-free validation CI now
+covers the module; this does not deploy an application or grant CI Azure access.
+
+Standard remains a future reviewed upgrade if platform-enforced tenant-specific
+authentication, SLA, networking requirements or quotas justify it. No SKU selector
+is added before that decision. Free quotas and lack of SLA are accepted limitations;
+a free hosting tier is not proof the complete solution fits the $300/month budget.
+
+Preserve the [domain reconciliation](domain-hosting-reconciliation.md): routing,
+public runtime configuration for immutable builds, Entra registration/scopes and
+redirects, CORS, service contracts, artifact delivery and credential release,
+domain ownership/DNS/TLS responsibilities remain their own stages. Preserve the
+reported Cloudflare Workers landing page. No neighboring repository is changed.
+
+Naming uses explicit operator-supplied resource names (1-60 alphanumeric/hyphen
+characters), rather than introducing another generator or assuming a global domain.
+Names/region can cause replacement; removing the opt-in proposes destruction, not
+a pause. Review resource/content/hostname continuity before deployment changes.
+Existing isolated roots/states and human plan/apply/promotion gates remain.
+
+Terraform 1.17.1 and AzAPI 2.9.0 remain selected. Evaluated AVM staticsite 0.6.2
+adds AzureRM 4.x and exposes an API-key interface; its underlying provider reads
+deployment secrets. The focused local composition avoids that additional provider
+and key retrieval while enforcing the repeated Free/detached hosting contract.
+Terraform MCP module search/details and Context7 supplied module documentation;
+selected AzAPI lookup failed, so tagged official provider documentation was used.
+
+References:
+
+- [ARM staticSites API 2024-11-01](https://learn.microsoft.com/en-us/azure/templates/microsoft.web/2024-11-01/staticsites)
+- [AVM 0.6.2 dependencies](https://github.com/Azure/terraform-azurerm-avm-res-web-staticsite/blob/v0.6.2/terraform.tf)
+- [Static site name validation](https://github.com/hashicorp/terraform-provider-azurerm/blob/v4.3.0/internal/services/appservice/validate/static_web_app.go)
+- [AzAPI 2.9.0 resource](https://github.com/Azure/terraform-provider-azapi/blob/v2.9.0/docs/resources/resource.md)
+- [SWA plans](https://learn.microsoft.com/en-us/azure/static-web-apps/plans)
+
+Local validation and mocked tests cannot prove regional eligibility, actual quota,
+Azure deployment, TLS behavior, application authentication or content safety.

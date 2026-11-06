@@ -4,6 +4,8 @@ Terraform foundation for Pipesor's planned Microsoft Azure infrastructure, with 
 
 ## Current state
 
+- [Static Web Apps Free](docs/mvp-resource-baseline.md#static-web-apps-free-hosting) is opt-in per environment for a public static shell only. Authentication, domains and delivery remain separate.
+
 - [Microsoft Foundry](docs/mvp-resource-baseline.md#shared-microsoft-foundry-foundation) is opt-in per environment: one public Entra-only account/project. Model deployments and runtime grants remain deferred.
 
 - [Application Insights](docs/mvp-resource-baseline.md#shared-backend-application-insights) is opt-in per environment, linked to the existing workspace with Entra-only ingestion. Instrumentation and service grants remain deferred.

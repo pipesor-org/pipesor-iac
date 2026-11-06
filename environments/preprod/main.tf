@@ -53,3 +53,11 @@ module "foundry" {
   resource_group_id = module.resource_group.resource_group.id
   configuration     = var.foundry
 }
+
+module "static_web_app" {
+  count             = var.static_web_app == null ? 0 : 1
+  source            = "../../modules/static-web-app"
+  environment       = "preprod"
+  resource_group_id = module.resource_group.resource_group.id
+  configuration     = var.static_web_app
+}

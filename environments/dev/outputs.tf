@@ -27,3 +27,8 @@ output "foundry" {
   description = "Nonsecret Foundry interface, or null when disabled; inference requires later model and access contracts."
   value       = one(module.foundry[*].foundry)
 }
+
+output "static_web_app" {
+  description = "Optional static hosting identity and default hostname; no credentials."
+  value       = try(module.static_web_app[0].site, null)
+}

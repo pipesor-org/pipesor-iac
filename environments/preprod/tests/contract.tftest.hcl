@@ -15,7 +15,7 @@ run "preprod_root_contract" {
   command = plan
 
   assert {
-    condition     = output.foundry == null && length(module.foundry) == 0 && output.application_insights == null && length(module.application_insights) == 0 && output.resource_group.name == "rg-pipesor-preprod" && output.container_platform == null && length(module.container_platform) == 0 && output.service_bus == null && output.postgresql == null && length(module.postgresql) == 0 && length(module.service_bus) == 0
+    condition     = output.static_web_app == null && length(module.static_web_app) == 0 && output.foundry == null && length(module.foundry) == 0 && output.application_insights == null && length(module.application_insights) == 0 && output.resource_group.name == "rg-pipesor-preprod" && output.container_platform == null && length(module.container_platform) == 0 && output.service_bus == null && output.postgresql == null && length(module.postgresql) == 0 && length(module.service_bus) == 0
     error_message = "This root must retain its own environment identity."
   }
 
@@ -281,5 +281,24 @@ run "opt_in_foundry_contract" {
   assert {
     condition     = length(module.foundry) == 1 && output.foundry.account_name == "test-pipesor-preprod-ai" && output.foundry.project_name == "pipesor-preprod" && output.foundry.location == "airegion" && output.container_platform == null
     error_message = "Foundry must opt in independently with the explicit names and region."
+  }
+}
+
+run "opt_in_static_web_app_contract" {
+  command = plan
+  variables { static_web_app = { name = "test-pipesor-preprod-web", location = "webregion" } }
+  override_resource {
+    target          = module.resource_group.module.resource_group.azapi_resource.this
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-preprod" }
+  }
+  override_resource {
+    target          = module.static_web_app[0].azapi_resource.site
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-preprod/providers/Microsoft.Web/staticSites/test-pipesor-preprod-web", output = { properties = { defaultHostname = "synthetic.azurestaticapps.net" } } }
+  }
+  assert {
+    condition     = length(module.static_web_app) == 1 && output.static_web_app.name == "test-pipesor-preprod-web" && output.static_web_app.location == "webregion" && output.static_web_app.default_hostname == "synthetic.azurestaticapps.net" && output.container_platform == null
+    error_message = "Static hosting must opt in independently with explicit inputs and service-reported hostname."
   }
 }
