@@ -45,3 +45,11 @@ module "application_insights" {
     location = var.container_platform.location
   }
 }
+
+module "foundry" {
+  count             = var.foundry == null ? 0 : 1
+  source            = "../../modules/foundry"
+  environment       = "preprod"
+  resource_group_id = module.resource_group.resource_group.id
+  configuration     = var.foundry
+}

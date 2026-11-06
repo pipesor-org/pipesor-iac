@@ -34,6 +34,7 @@ export function checkCallerPlans(directory, stdout) {
 
   if (kind === 'environments') {
     const baseline = plan(`${environment}_root_contract`);
+    assert.ok(!(baseline.resource_changes ?? []).some(change => change.address.startsWith('module.foundry[')), 'Opt-out must plan no Foundry resources');
     assert.ok(!(baseline.resource_changes ?? []).some(change => change.address.startsWith('module.container_platform[')), 'Opt-out must plan no platform resources');
     const enabled = plan('opt_in_platform_contract');
     const group = `${subscription}/resourceGroups/rg-pipesor-${environment}`;
@@ -59,6 +60,23 @@ export function checkCallerPlans(directory, stdout) {
     assert.ok(output, 'Missing platform output');
     for (const item of [network, subnet, workspace, platform]) assert.ok(item.id, 'Missing mocked resource ID');
     assert.deepEqual([output.environment_id, output.infrastructure_subnet_id, output.workspace_id, output.network_id], [platform.id, subnet.id, workspace.id, network.id], 'Caller resource ID exports');
+    const foundryPlan = plan('opt_in_foundry_contract');
+    assert.deepEqual(foundryPlan.resource_changes.filter(change => change.address.startsWith('module.foundry[')).map(change => change.address).sort(), ['module.foundry[0].azapi_resource.account', 'module.foundry[0].azapi_resource.project'], 'Foundry scope contains only account and project');
+    const account = resource(foundryPlan, 'module.foundry[0].azapi_resource.account');
+    const project = resource(foundryPlan, 'module.foundry[0].azapi_resource.project');
+    assert.equal(account.parent_id, group, 'Foundry caller resource group');
+    assert.equal(account.location, 'airegion', 'Foundry caller region');
+    assert.equal(account.name, `test-pipesor-${environment}-ai`, 'Foundry caller account name');
+    assert.equal(account.tags.environment, environment, 'Foundry caller environment');
+    assert.equal(project.name, `pipesor-${environment}`, 'Foundry caller project name');
+    assert.equal(project.parent_id, account.id, 'Foundry caller project parenting');
+    assert.equal(project.location, 'airegion', 'Foundry caller project region');
+    assert.equal(account.body.properties.disableLocalAuth, true, 'Foundry caller Entra authentication');
+    assert.equal(account.body.properties.publicNetworkAccess, 'Enabled', 'Foundry caller public endpoint');
+    assert.deepEqual(foundryPlan.output_changes.foundry.after, {
+      account_id: account.id, account_name: account.name, project_id: project.id,
+      project_name: project.name, location: 'airegion', endpoint: account.output.properties.endpoint,
+    }, 'Foundry caller interface');
     const telemetryPlan = plan('opt_in_application_insights_contract');
     const telemetry = resource(telemetryPlan, 'module.application_insights[0].azapi_resource.component');
     const telemetryWorkspace = resource(telemetryPlan, prefix + 'workspace');
@@ -106,7 +124,7 @@ export function checkCallerPlans(directory, stdout) {
 
 if (import.meta.main) {
   const directory = process.argv[2];
-  const module = /^modules\/(resource-group|state-store|container-platform|service-bus|postgresql|application-insights)$/.test(directory);
+  const module = /^modules\/(resource-group|state-store|container-platform|service-bus|postgresql|application-insights|foundry)$/.test(directory);
   assert.ok(module || /^(environments|bootstrap)\/(dev|qa|preprod|prod)$/.test(directory), 'Select one reviewed Terraform directory');
   const command = ['terraform', `-chdir=${directory}`, 'test', '-filter=tests/contract.tftest.hcl'];
   if (!module) command.push('-json', '-verbose');
