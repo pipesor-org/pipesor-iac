@@ -1,0 +1,100 @@
+# Inactive design scaffold: keep outside .github/workflows with the .example suffix.
+# Copying/activating or adding cloud steps requires a separate reviewed change and authorization.
+# GitHub Free/private approvals are procedural; dispatch and these inputs enforce no human gate.
+name: Terraform dev deployment scaffold
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: Separate manual invocation for plan or reviewed-plan apply
+        type: choice
+        options: [plan, apply]
+        required: true
+      source_sha:
+        description: Full immutable commit SHA reachable from main
+        type: string
+        required: true
+      authorization_record:
+        description: Non-sensitive repository approval/scope record; never plan content
+        type: string
+        required: true
+      reviewed_plan_sha256:
+        description: Required for apply; digest of the exact reviewed saved plan
+        type: string
+        required: false
+      encrypted_plan_reference:
+        description: Required for apply; non-sensitive encrypted artifact reference, never a key or signed URL
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-dev
+  cancel-in-progress: false
+
+env:
+  TF_ROOT: environments/dev
+  ARM_USE_CLI: 'false'
+  ARM_USE_MSI: 'false'
+  ARM_USE_OIDC: 'false'
+
+jobs:
+  prepare:
+    if: ${{ false }}
+    # Proposed runner only: verify Debian VM capacity, isolation and approved egress first.
+    runs-on: [self-hosted, linux, x64, pipesor-dev-ephemeral]
+    timeout-minutes: 10
+    steps:
+      - name: Check the manual invocation contract
+        shell: bash
+        env:
+          STAGE: ${{ inputs.stage }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          AUTHORIZATION_RECORD: ${{ inputs.authorization_record }}
+          REVIEWED_PLAN_SHA256: ${{ inputs.reviewed_plan_sha256 }}
+          ENCRYPTED_PLAN_REFERENCE: ${{ inputs.encrypted_plan_reference }}
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/main ]]
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ -n "$AUTHORIZATION_RECORD" ]]
+          case "$STAGE" in
+            plan) ;;
+            apply)
+              [[ "$REVIEWED_PLAN_SHA256" =~ ^[0-9a-f]{64}$ ]]
+              [[ -n "$ENCRYPTED_PLAN_REFERENCE" ]]
+              ;;
+            *) exit 1 ;;
+          esac
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check trunk ancestry and stop before cloud access
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$SOURCE_SHA" refs/remotes/origin/main
+          echo 'Inactive scaffold: runner, OIDC, backend and execution remain unconfigured.'
+          exit 1
+
+# Activation contract (documentation only; no execution is implemented here):
+# - Finish local application integration and Ramiro's initial authorization boundaries.
+# - Verify the proposed VM (2 CPU/4 GiB/20 GiB), approved public egress and storage access.
+# - Use one-job ephemeral registration; restore a clean guest before each job.
+#   No personal CLI credentials, backup keys, shared folders or state may exist in its image.
+# - Review dev-only OIDC trust/RBAC separately; PR jobs receive no cloud/state credentials.
+# - Plan and apply are separate runs bound to the same immutable SHA, inputs and plan digest.
+#   Recheck drift, expiry and the latest reviewed candidate; replan/review after any change.
+# - Encrypt saved plans before transfer; retain encrypted plans for one day, never plaintext artifacts/logs.
+# - Apply only the exact reviewed plan after explicit procedural authorization; no silent replanning.
+# - After approved applies, verify resources and retain encrypted state backups for 90 days,
+#   recoverable independently by Jhon and Ramiro under the documented age custody procedure.
+# - Record non-sensitive evidence in the private repo; clean/unregister and restore the runner guest.
+# Shared concurrency serializes jobs; it does not reserve a state throughout the gap between runs.

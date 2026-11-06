@@ -5,6 +5,16 @@ the current checkout's GitHub repository is `pipesor-org/pipesor-iac`).
 This records the target strategy; it creates no roots, state stores, identities,
 repository protections or deployment workflows.
 
+MVP refinement (2026-11-06): [ADR 004](adr-004-mvp-state-and-deployment.md) selects
+dev-only deployment in temporary Azure for Students/UPC infrastructure after
+application implementation and local integration/validation. It targets Actions
+OIDC for MVP workload deployment on Jhon's proposed Debian VirtualBox runner,
+subject to readiness/access/network verification and separate activation approval.
+GitHub Free dev approvals are procedural: Ramiro authorizes initial access/scope;
+Jhon reviews and explicitly authorizes subsequent dev plans, without Ramiro releasing
+credentials per deployment. WSL CLI is acceptable for authorized bootstrap/preparation. Other
+environments and their promotion gates remain preserved, not provisioned.
+
 ## Source and integration
 
 `main` is the single source of truth. Use small, short-lived `feature/<topic>` or
@@ -58,16 +68,19 @@ input versions and secret version references without recording secret values.
 
 For each environment, check out that SHA in a clean directory, select that root,
 confirm subscription/backend/identity, and generate a fresh saved plan against its
-current state and inputs. Independently review the actual plan and obtain explicit
-human authorization for that environment's apply. Apply only that reviewed plan;
+current state and inputs. Review the actual plan and obtain explicit human
+authorization for that environment's apply. ADR 004's MVP exception permits Jhon's
+procedural review/authorization for dev; other environments retain independent
+review requirements. Apply only that reviewed plan;
 never regenerate it silently after approval, reuse another environment's plan, or
 apply a PR's speculative plan. If the SHA, inputs, dependencies, plan or relevant
 state/drift changes, regenerate and obtain new review/authorization.
 This follows HashiCorp's distinction between [speculative and saved plans](https://developer.hashicorp.com/terraform/cli/commands/plan).
 
 After apply, verify the intended resources, security settings and workload health;
-plan success and apply success alone do not prove readiness. A human reviewer
-independent of the implementer verifies the evidence before the next promotion.
+plan success and apply success alone do not prove readiness. Jhon records dev
+verification under ADR 004. Before any later promotion, a human reviewer independent
+of the implementer verifies the evidence.
 QA signs off before `preprod`; a product owner/authorized production approver who
 did not initiate the deployment signs off before `prod`. Source PR approval and
 agent review do not replace environment-specific plan review or deployment approval.
@@ -75,9 +88,10 @@ All applies, including `dev`, retain the explicit human authorization requiremen
 
 Record SHA, environment/root, subscription and backend identity, tool/dependency
 versions, input references, plan digest, reviewer/approver identities and timestamps,
-execution/run link, apply outcome and verification evidence in a deployment record
-(a restricted change record or future deployment system). Protect plans/logs as
-sensitive; never commit plans or state. Serialize operations per state and prevent
+execution/run link, apply outcome and verification evidence in a deployment record.
+For the MVP, store non-sensitive records in the existing private GitHub repository;
+store the full plans/logs separately with restricted access under ADR 004. Protect
+plans/logs as sensitive; never commit plans or state. Serialize operations per state and prevent
 concurrent promotion of competing revisions. Failed verification stops promotion;
 new fixes start again at `dev`. Recovery is a fresh reviewed plan, not blindly
 reapplying an old plan or assuming a Git revert reverses infrastructure safely.
@@ -103,9 +117,12 @@ does not provide an enforced deployment gate. Where native reviewer gates become
 available, prevent self-review and bypass; only one listed required reviewer needs
 to approve, so distinct QA/product approvals must be modeled explicitly.
 
-Until enforceable gates exist, reviews/checks are procedural requirements: limit
+Until enforceable gates exist, source reviews/checks are procedural requirements: limit
 merge access to maintainers, record approvals and use a designated human operator
-with controlled Azure access for authorized deployments. Production stays manual;
+with controlled Azure access for separately authorized bootstrap/preparation.
+MVP workload deployment targets Actions OIDC under ADR 004 with explicitly accepted
+procedural dev approvals on GitHub Free. Activation remains blocked on application
+readiness, access, runner/network verification and separate authorization. Production stays manual;
 do not give Actions a production apply identity on branch trust alone. Before
 automating production, require Enterprise environment approvals or a separately
 enforced external approval/credential-release control. OIDC authenticates a job;

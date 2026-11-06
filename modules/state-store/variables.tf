@@ -36,7 +36,7 @@ variable "settings" {
   }
   validation {
     condition     = length(var.settings.principal_ids) > 0 && alltrue([for id in var.settings.principal_ids : can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", id)) && lower(id) != "00000000-0000-0000-0000-000000000000"])
-    error_message = "Provide at least one nonzero Entra principal object UUID, reviewed for this environment only."
+    error_message = "Provide at least one nonzero Entra principal object UUID, reviewed for this state scope only."
   }
   # shortcut: narrow operator egress ranges only; review validation/tests before admitting broader ranges.
   validation {
@@ -55,11 +55,11 @@ variable "settings" {
   }
 }
 variable "environment" {
-  description = "Fixed environment of the isolated bootstrap caller."
+  description = "Fixed state scope: a workload environment or admin for subscription-wide controls."
   type        = string
   nullable    = false
   validation {
-    condition     = contains(["dev", "qa", "preprod", "prod"], var.environment)
-    error_message = "Environment must be dev, qa, preprod or prod."
+    condition     = contains(["dev", "qa", "preprod", "prod", "admin"], var.environment)
+    error_message = "State scope must be dev, qa, preprod, prod or admin."
   }
 }

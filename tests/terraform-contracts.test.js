@@ -106,8 +106,8 @@ function bootstrapEvents(environment = 'prod', account = 'pipesorstatefixturepro
   const prefix = 'module.state_store.module.';
   const plan = { resource_changes: [
     resource(prefix + 'resource_group.azapi_resource.this', { parent_id: subscription, location: 'testregion' }),
-    resource(prefix + 'storage.azapi_resource.this', { parent_id: group, location: 'testregion', name: account, body: { sku: { name: 'Standard_ZRS' }, properties: { networkAcls: { ipRules: [{ value: '203.0.113.0/24' }, { value: '198.51.100.5' }] } } } }),
-    resource(prefix + 'blob_service.azapi_update_resource.this', { body: { properties: { deleteRetentionPolicy: { days: 17 }, containerDeleteRetentionPolicy: { days: 17 } } } }),
+    resource(prefix + 'storage.azapi_resource.this', { parent_id: group, location: 'testregion', name: account, body: { sku: { name: environment === 'admin' ? 'Standard_LRS' : 'Standard_ZRS' }, properties: { networkAcls: { ipRules: [{ value: '203.0.113.0/24' }, { value: '198.51.100.5' }] } } } }),
+    resource(prefix + 'blob_service.azapi_update_resource.this', { body: { properties: { deleteRetentionPolicy: { days: environment === 'admin' ? 30 : 17 }, containerDeleteRetentionPolicy: { days: environment === 'admin' ? 30 : 17 } } } }),
     resource(prefix + 'container.azapi_resource.this', container),
     ...principals.map(principal => resource(`grant-${principal}`, { type: 'Microsoft.Authorization/roleAssignments@2022-04-01', parent_id: container.id, body: { properties: { principalId: principal, roleDefinitionId: `${subscription}/providers/Microsoft.Authorization/roleDefinitions/ba92f5b4-2d11-453d-a403-e96b0029c9fe` } } })),
   ] };
@@ -117,6 +117,18 @@ function bootstrapEvents(environment = 'prod', account = 'pipesorstatefixturepro
 function changedResource(events, suffix) {
   return events.filter(event => event.type === 'test_plan' && event['@testrun'] !== 'combined_foundations_contract').flatMap(event => event.test_plan.resource_changes).find(change => change.address.endsWith(suffix)).change.after;
 }
+
+test('administrative bootstrap retains its own account and approved MVP recovery inputs', () => {
+  checkCallerPlans('bootstrap/admin', encode(bootstrapEvents('admin', 'pipesorstatefixtureadmin')));
+  const shared = bootstrapEvents('admin', 'pipesorstatefixturedev');
+  expect(() => checkCallerPlans('bootstrap/admin', encode(shared))).toThrow('Caller account name');
+  const recovery = bootstrapEvents('admin', 'pipesorstatefixtureadmin');
+  changedResource(recovery, 'blob_service.azapi_update_resource.this').body.properties.deleteRetentionPolicy.days = 17;
+  expect(() => checkCallerPlans('bootstrap/admin', encode(recovery))).toThrow('Caller recovery window');
+  const replication = bootstrapEvents('admin', 'pipesorstatefixtureadmin');
+  changedResource(replication, 'storage.azapi_resource.this').body.sku.name = 'Standard_ZRS';
+  expect(() => checkCallerPlans('bootstrap/admin', encode(replication))).toThrow('Caller replication');
+});
 
 test('accepts valid caller plans with distinct IDs and unordered IP sets', () => {
   checkCallerPlans('environments/qa', encode(environmentEvents()));

@@ -1,11 +1,13 @@
+# Temporary Azure for Students / UPC target verified by the owner on 2026-11-06.
+# Preparation only: deployment waits for local application integration and explicit authorization.
 # Replace placeholders only after target, access and recovery review. No real credentials.
-subscription_id = "<target-subscription-uuid>"
-tenant_id = "<target-tenant-uuid>"
+subscription_id = "04f339b7-f969-4e17-801c-da6e81e78ffd"
+tenant_id = "0e0cb060-09ad-49f5-a005-68b9b49aa1f6"
 settings = {
   account_name = "<globally-unique-storage-name>"
   location = "<approved-azure-region>"
-  replication = "<approved-redundancy>"
-  recovery_days = "<approved-integer-1-to-365>"
-  principal_ids = ["<environment-specific-principal-object-uuid>"]
+  replication = "LRS"
+  recovery_days = 30
+  principal_ids = ["<approved-state-scope-principal-object-uuid>"]
   allowed_ips = ["<approved-public-ip-or-range>"]
 }

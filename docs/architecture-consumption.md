@@ -64,8 +64,9 @@ The increment creates Terraform definitions for one resource group per environme
 using the already evaluated naming module and a suitable resource-group AVM.
 The shared composition enforces the repeated environment/name/location contract.
 Four callers fix `dev`, `qa`, `preprod` and `prod` respectively and require explicit
-subscription and resource-group metadata location inputs. No real values are
-selected, and a metadata location does not impose a location on future resources.
+subscription and resource-group metadata location inputs. This original increment
+selected no real values. ADR 004 now records an owner-verified temporary dev target;
+metadata location remains pending and does not impose future workload locations.
 
 The initial group is a reversible local engineering prerequisite for Azure resource
 management. It is not an additional product component, commitment to put all future
@@ -94,12 +95,14 @@ period is extended to telemetry, audit, corpus or configuration.
 | Embeddings, RAG and LLM | PD-005/006/023/026: model/dimension, authorized corpus, load/update mechanism and concrete LLM variant. |
 | Data operations and evaluation | PD-030 with PD-017 for retention; PD-001/021/022 for comparative measurement/protocol evidence. |
 
-Next concrete increment: specify the target tenant/subscriptions and metadata
-locations, then implement separately authorized Azure Blob state bootstrap with
-isolated containers, scoped Entra access and recovery requirements. That enables a
-fresh reviewed resource-group plan per environment; it does not authorize apply.
-Workload resources can follow independently when their specific deployment inputs
-and relevant PD-035 contracts are approved.
+Current sequencing is refined by [ADR 004](adr-004-mvp-state-and-deployment.md):
+only dev is selected in temporary Azure for Students/UPC infrastructure, and
+implementation, local integration and validation of the application services block
+all provisioning. State-bootstrap configuration can be prepared and mocked locally;
+Azure bootstrap itself requires later explicit authorization, pending access and
+deployment inputs. Actions OIDC dev deployment uses ADR 004's accepted procedural
+approval model; verify the Debian VirtualBox runner, network, encryption/recovery
+and explicit activation authorization first. No other environment is commissioned.
 
 ## Dependency documentation
 
