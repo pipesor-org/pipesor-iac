@@ -137,6 +137,13 @@ secret management or network topology.
 
 ## Shared MVP container platform
 
+Use ACA native ingress for the MVP under
+[ADR 003](adr-003-mvp-native-ingress.md), without dedicated gateway infrastructure.
+Expose only required endpoints, keep internal services off public ingress and
+retain Entra authentication and application authorization responsibilities. WAF
+and centralized rate limiting are absent; corporate policy compliance remains
+unverified. Service exposure and delivery contracts are still required.
+
 The [MVP baseline](mvp-resource-baseline.md) records the user-approved Consumption,
 custom VNet, external-capable environment and shared workspace choices. Each root
 opts in through a nullable `container_platform` object; null adds no platform.
