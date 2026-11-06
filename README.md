@@ -86,6 +86,7 @@ The [Commitlint workflow](.github/workflows/commitlint.yml) validates hook confi
 - [Consumed architecture](docs/architecture-consumption.md): consulted documentation revision, evidence limits, supported scope and unresolved contracts.
 - [ADR 001](docs/adr-001-branching-and-promotion.md): environment isolation, promotion, approval requirements, and documented GitHub enforcement limitations.
 - [ADR 002 (proposed)](docs/adr-002-terraform-module-composition.md): module composition, capability boundaries and their distinction from state isolation.
+- [ADR 003](docs/adr-003-mvp-native-ingress.md): approved ACA native ingress for the MVP, application security responsibilities and accepted gateway limitations.
 - [Agent and engineering guidance](AGENTS.md): coordination, documentation tools, authorization boundaries, and verification.
 - [Optional Codex setup](.codex/README.md): repository-local roles, configuration, and startup checks.
 - [lefthook.yml](lefthook.yml), [commitlint.config.js](commitlint.config.js), and [hook tests](tests/commit-msg.sh): local commit validation.
