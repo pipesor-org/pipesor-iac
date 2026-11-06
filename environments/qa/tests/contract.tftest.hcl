@@ -15,7 +15,7 @@ run "qa_root_contract" {
   command = plan
 
   assert {
-    condition     = output.application_insights == null && length(module.application_insights) == 0 && output.resource_group.name == "rg-pipesor-qa" && output.container_platform == null && length(module.container_platform) == 0 && output.service_bus == null && output.postgresql == null && length(module.postgresql) == 0 && length(module.service_bus) == 0
+    condition     = output.foundry == null && length(module.foundry) == 0 && output.application_insights == null && length(module.application_insights) == 0 && output.resource_group.name == "rg-pipesor-qa" && output.container_platform == null && length(module.container_platform) == 0 && output.service_bus == null && output.postgresql == null && length(module.postgresql) == 0 && length(module.service_bus) == 0
     error_message = "This root must retain its own environment identity."
   }
 
@@ -256,4 +256,30 @@ run "reject_insights_without_workspace" {
   command = plan
   variables { application_insights_enabled = true }
   expect_failures = [var.application_insights_enabled]
+}
+
+run "opt_in_foundry_contract" {
+  command = plan
+  variables {
+    foundry = { account_name = "test-pipesor-qa-ai", project_name = "pipesor-qa", location = "airegion" }
+  }
+  override_resource {
+    target          = module.resource_group.module.resource_group.azapi_resource.this
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-qa" }
+  }
+  override_resource {
+    target          = module.foundry[0].azapi_resource.account
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-qa/providers/Microsoft.CognitiveServices/accounts/test-pipesor-qa-ai", output = { properties = { endpoint = "https://synthetic.cognitiveservices.azure.com/" } } }
+  }
+  override_resource {
+    target          = module.foundry[0].azapi_resource.project
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-qa/providers/Microsoft.CognitiveServices/accounts/test-pipesor-qa-ai/projects/pipesor-qa" }
+  }
+  assert {
+    condition     = length(module.foundry) == 1 && output.foundry.account_name == "test-pipesor-qa-ai" && output.foundry.project_name == "pipesor-qa" && output.foundry.location == "airegion" && output.container_platform == null
+    error_message = "Foundry must opt in independently with the explicit names and region."
+  }
 }

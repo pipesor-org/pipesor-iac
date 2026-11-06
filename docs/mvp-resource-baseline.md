@@ -54,7 +54,7 @@ The separate Azure Blob backend for Terraform state remains in scope.
 | API perimeter | ACA native ingress is approved for the MVP under [ADR 003](adr-003-mvp-native-ingress.md). No dedicated gateway. Per-service exposure, Entra authentication and application authorization contracts remain open; absence of WAF and centralized rate limiting is an accepted limitation requiring reassessment if mandatory policy demands them. |
 | Evidence retention | Workload Blob Storage is excluded by the decision above; evidence-retention and retrieval guarantees remain open. Terraform state storage is separate. |
 | Images and credentials | GHCR is selected for the MVP; no ACR is needed. Image delivery, private-pull credential ownership/rotation and secret handling remain open without inferring Key Vault. |
-| AI | Resolve concrete model deployments, embedding ownership/dimensions and authorized corpus lifecycle. |
+| AI | Microsoft Foundry account/project with public Entra-only access is approved; see the shared Foundry foundation below. Concrete model deployments, embedding ownership/dimensions and authorized corpus lifecycle remain open. |
 
 Account identifiers, region and environment-specific values can remain required
 inputs with nondeployable examples during local development. Unknown security
@@ -353,3 +353,54 @@ Sources consulted 2026-11-05:
 
 Local validation and mocked tests cannot establish actual ingestion, SDK behavior,
 identity access, effective retention, regional availability or deployed cost.
+
+## Shared Microsoft Foundry foundation
+
+The project owner approved one Microsoft Foundry account and one project per
+provisioned environment, with public HTTPS access and Entra-only authentication,
+for local implementation on 2026-11-05. This supersedes the standalone Azure
+OpenAI account candidate. It does not authorize Azure writes or select models.
+
+`foundry = null` preserves the existing environment resources. Opting in creates
+an S0 `AIServices` account with project management enabled and one child project;
+both have system-assigned identities. These identities are not the calling ACA
+services and receive no access grants. Account key authentication is disabled.
+The public network boundary allows all source networks; Entra data-plane access
+still requires explicitly authorized identities and least-privilege roles. No
+stable ACA outbound IP address or corporate policy compliance is assumed.
+
+Supply `account_name`, `project_name` and `location` explicitly. The account name
+also supplies its globally unique custom subdomain; verify availability before
+planning. Removing an enabled configuration proposes destruction. Account location
+changes require replacement, including its project. Outputs expose only account/
+project IDs and names, location and the service-reported account endpoint. They
+contain no keys and do not establish an application SDK or model interface.
+
+The module deliberately creates no model deployments, access grants, private
+endpoints, projects in classic Azure Machine Learning hubs, agents, AI Search,
+Blob, secret store or gateway. Preserve ACA orchestration and PostgreSQL/pgvector
+ownership. No new provider or module dependency is required: a focused local
+composition uses AzAPI 2.9.0 with stable account/project APIs 2025-06-01. Evaluated
+[AVM account 0.11.1](https://github.com/Azure/terraform-azurerm-avm-res-cognitiveservices-account/blob/v0.11.1/terraform.tf)
+adds AzureRM and Time dependencies, and its account implementation does not
+provide this complete account/project composition. Keep existing dependencies.
+
+Implementation references:
+[Microsoft Terraform guide](https://learn.microsoft.com/en-us/azure/foundry/how-to/create-resource-terraform),
+[account API](https://learn.microsoft.com/en-us/azure/templates/microsoft.cognitiveservices/2025-06-01/accounts),
+[project API](https://learn.microsoft.com/en-us/azure/templates/microsoft.cognitiveservices/2025-06-01/accounts/projects),
+[disable local authentication](https://learn.microsoft.com/en-us/azure/ai-services/disable-local-auth),
+and [AzAPI 2.9.0 resource behavior](https://github.com/Azure/terraform-provider-azapi/blob/v2.9.0/docs/resources/resource.md).
+The guide's example key-authentication and model defaults are not adopted.
+
+An empty account/project provides no inference. Model/version, deployment type
+and processing geography, embedding dimensions/ownership, approved corpus and
+sanitization contracts, caller identities and actual regional quota remain open.
+Public/private network placement does not select inference processing geography.
+Do not promise zero data retention; review provider abuse monitoring and any
+stateful API before real evidence use. Public access is approved for the MVP;
+private networking must be reassessed if mandatory policy or data classification
+requires it. The whole-solution planning budget is $300/month excluding credits;
+exact model usage/rates and the complete cost forecast remain unverified. Budgets
+and alerts are not hard spend caps. Four roots do not require four active accounts.
+Canonical architecture reconciliation remains separate in `pipesor-docs`.

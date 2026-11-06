@@ -1,7 +1,8 @@
 # Technical direction
 
 This foundation defines one resource group in each of four Terraform roots and an
-optional shared MVP container platform, Service Bus namespace and PostgreSQL server per environment; it is not an Azure landing zone. No resources or remote backends have been deployed.
+optional shared MVP container platform, Service Bus namespace, PostgreSQL server,
+Application Insights component and Microsoft Foundry account/project per environment; it is not an Azure landing zone. No resources or remote backends have been deployed.
 Subscriptions and metadata locations are required inputs, with no selected values.
 Workload regions and network allocations require explicit inputs. Service capacity,
 identity configuration and delivery contracts remain undecided. The Azure service selections and their limits are
@@ -176,3 +177,12 @@ The [MVP baseline](mvp-resource-baseline.md#shared-backend-application-insights)
 records one optional workspace-based component per environment. It reuses the
 platform workspace and location, with Entra-only authentication and public
 endpoints. No application instrumentation or service identity is created.
+
+## Shared Microsoft Foundry foundation
+
+The [Foundry baseline](mvp-resource-baseline.md#shared-microsoft-foundry-foundation)
+records the approved account/project composition and public Entra-only boundary.
+Each root opts in independently through `foundry`; null adds no account or project.
+Explicit names and region are required. No model deployment, service access grant
+or application interface is inferred; model and processing-geography contracts
+remain separate decisions. Existing roots, state and approval gates are preserved.

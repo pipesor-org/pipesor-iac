@@ -34,7 +34,10 @@ function environmentEvents() {
     resource(pgPrefix + 'server', { parent_id: group, location: 'workloadregion', name: 'test-pipesor-qa-pg', body: { properties: { authConfig: { tenantId: subscription.split('/')[2] } } } }),
     resource(pgPrefix + 'administrator', { name: principals[0] }),
   ] };
-  return [...eventsFor('qa_root_contract', { resource_changes: [] }), ...eventsFor('opt_in_platform_contract', enabled), ...eventsFor('opt_in_postgresql_contract', databasePlan), ...eventsFor('opt_in_application_insights_contract', { resource_changes: [resource('module.container_platform[0].azapi_resource.workspace', workspace), resource('module.application_insights[0].azapi_resource.component', { parent_id: group, location: 'workloadregion', name: 'appipipesorqa', body: { properties: { WorkspaceResourceId: workspace.id, DisableLocalAuth: true } } })] }), summary];
+  const account = { id: `${group}/providers/Microsoft.CognitiveServices/accounts/test-pipesor-qa-ai`, parent_id: group, name: 'test-pipesor-qa-ai', location: 'airegion', tags: { environment: 'qa' }, body: { properties: { disableLocalAuth: true, publicNetworkAccess: 'Enabled' } }, output: { properties: { endpoint: 'synthetic' } } };
+  const project = { id: `${account.id}/projects/pipesor-qa`, parent_id: account.id, name: 'pipesor-qa', location: 'airegion' };
+  const foundry = { resource_changes: [resource('module.foundry[0].azapi_resource.account', account), resource('module.foundry[0].azapi_resource.project', project)], output_changes: { foundry: { after: { account_id: account.id, account_name: account.name, project_id: project.id, project_name: project.name, location: 'airegion', endpoint: 'synthetic' } } } };
+  return [...eventsFor('opt_in_foundry_contract', foundry), ...eventsFor('qa_root_contract', { resource_changes: [] }), ...eventsFor('opt_in_platform_contract', enabled), ...eventsFor('opt_in_postgresql_contract', databasePlan), ...eventsFor('opt_in_application_insights_contract', { resource_changes: [resource('module.container_platform[0].azapi_resource.workspace', workspace), resource('module.application_insights[0].azapi_resource.component', { parent_id: group, location: 'workloadregion', name: 'appipipesorqa', body: { properties: { WorkspaceResourceId: workspace.id, DisableLocalAuth: true } } })] }), summary];
 }
 
 function bootstrapEvents(environment = 'prod', account = 'pipesorstatefixtureprod') {
@@ -125,4 +128,19 @@ test('rejects telemetry sent to another workspace', () => {
   const plan = events.find(event => event.type === 'test_plan' && event['@testrun'] === 'opt_in_application_insights_contract').test_plan;
   plan.resource_changes.find(item => item.address === 'module.application_insights[0].azapi_resource.component').change.after.body.properties.WorkspaceResourceId = 'wrong-workspace';
   expect(() => checkCallerPlans('environments/qa', encode(events))).toThrow('Telemetry caller workspace forwarding');
+});
+
+test('rejects Foundry caller security and project parenting regressions', () => {
+  const auth = environmentEvents();
+  changedResource(auth, 'module.foundry[0].azapi_resource.account').body.properties.disableLocalAuth = false;
+  expect(() => checkCallerPlans('environments/qa', encode(auth))).toThrow('Foundry caller Entra authentication');
+  const parent = environmentEvents();
+  changedResource(parent, 'module.foundry[0].azapi_resource.project').parent_id = subscription;
+  expect(() => checkCallerPlans('environments/qa', encode(parent))).toThrow('Foundry caller project parenting');
+});
+
+test('rejects unapproved resources added to Foundry scope', () => {
+  const events = environmentEvents();
+  events.find(event => event.type === 'test_plan' && event['@testrun'] === 'opt_in_foundry_contract').test_plan.resource_changes.push(resource('module.foundry[0].azapi_resource.deployment', {}));
+  expect(() => checkCallerPlans('environments/qa', encode(events))).toThrow('Foundry scope contains only account and project');
 });

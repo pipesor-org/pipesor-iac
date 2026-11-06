@@ -17,6 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         directory:
+          - modules/foundry
           - modules/application-insights
           - modules/postgresql
           - modules/service-bus

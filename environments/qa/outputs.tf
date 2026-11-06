@@ -22,3 +22,8 @@ output "application_insights" {
   description = "Backend telemetry routing, or null when disabled; publishing data still requires approved Entra access."
   value       = one(module.application_insights[*].telemetry)
 }
+
+output "foundry" {
+  description = "Nonsecret Foundry interface, or null when disabled; inference requires later model and access contracts."
+  value       = one(module.foundry[*].foundry)
+}

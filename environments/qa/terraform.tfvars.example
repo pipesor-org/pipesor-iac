@@ -36,3 +36,10 @@ postgresql = null
 
 # Requires container_platform; shares its workspace/location. No app instrumentation is configured.
 application_insights_enabled = false
+
+# Optional public Entra-only Foundry foundation; placeholders are not deployment inputs.
+# foundry = {
+#   account_name = "replace-with-globally-available-account-name"
+#   project_name = "pipesor-qa"
+#   location     = "replace-with-approved-region"
+# }

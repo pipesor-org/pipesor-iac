@@ -67,3 +67,13 @@ variable "application_insights_enabled" {
     error_message = "Application Insights requires the existing container platform workspace."
   }
 }
+
+variable "foundry" {
+  description = "Opt in to one public Entra-only Foundry account/project; no models or runtime grants. Removing deployed configuration proposes destruction."
+  type = object({
+    account_name = string
+    project_name = string
+    location     = string
+  })
+  default = null
+}
