@@ -45,6 +45,16 @@ The separate Azure Blob backend for Terraform state remains in scope.
 
 ## Decisions still required for the affected resources
 
+The [dated cost projection](mvp-cost-projection.md) separates checked-in defaults
+from enabled-foundation scenarios and omitted workload/state costs. It preserves
+the $300 target and the selected dedicated-subscription layout.
+
+The [subscription cost-notification decision](subscription-controls.md) approves
+one 300 USD monthly budget for the confirmed dedicated USD subscription, in its
+own root/state, with email-only Actual 50/80/100 and Forecasted 100 alerts. It does
+not allocate 300 to each environment or stop spending. Dates, recipients and state
+custody remain deployment inputs.
+
 The [increment priorities](infrastructure-priorities.md) distinguish independent
 local verification work from resource increments blocked on accepted contracts.
 

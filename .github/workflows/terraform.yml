@@ -17,6 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         directory:
+          - subscription-controls
           - modules/static-web-app
           - modules/foundry
           - modules/application-insights

@@ -49,7 +49,7 @@ test file. All tests replace AzAPI with a mock and use plan-only runs; `testregi
 and the UUID in tests are synthetic fixtures, not selected Azure inputs.
 
 ```sh
-for directory in modules/resource-group modules/state-store modules/container-platform modules/service-bus modules/postgresql modules/application-insights environments/dev environments/qa environments/preprod environments/prod bootstrap/dev bootstrap/qa bootstrap/preprod bootstrap/prod; do
+for directory in modules/resource-group modules/state-store modules/container-platform modules/service-bus modules/postgresql modules/application-insights modules/foundry modules/static-web-app environments/dev environments/qa environments/preprod environments/prod bootstrap/dev bootstrap/qa bootstrap/preprod bootstrap/prod subscription-controls; do
   terraform -chdir="$directory" init -backend=false -input=false -lockfile=readonly
   terraform -chdir="$directory" validate
   bun tests/terraform-contracts.js "$directory"
@@ -60,7 +60,7 @@ Run these checks without Azure write credentials. Backend-disabled initializatio
 does not connect to remote state. Validation and mocked plans do not prove Azure
 deployability, permissions, region availability, backend access or workload health.
 The [Terraform workflow](.github/workflows/terraform.yml) runs these credential-free
-checks for all fourteen directories on PRs and pushes to `main`; it has no Azure login,
+checks for all listed modules and roots on PRs and pushes to `main`; it has no Azure login,
 OIDC permission, plan artifact or deployment job.
 
 The test runner also inspects the effective mocked plans for environment and
@@ -87,6 +87,7 @@ The [Commitlint workflow](.github/workflows/commitlint.yml) validates hook confi
 ## Repository guide
 
 - [Technical direction](docs/architecture.md): current foundation, intended layout, state handling, and provider/module selection criteria.
+- [Subscription controls](docs/subscription-controls.md): optional subscription-wide budget, notification policy and separate state custody.
 - [Consumed architecture](docs/architecture-consumption.md): consulted documentation revision, evidence limits, supported scope and unresolved contracts.
 - [ADR 001](docs/adr-001-branching-and-promotion.md): environment isolation, promotion, approval requirements, and documented GitHub enforcement limitations.
 - [ADR 002 (proposed)](docs/adr-002-terraform-module-composition.md): module composition, capability boundaries and their distinction from state isolation.

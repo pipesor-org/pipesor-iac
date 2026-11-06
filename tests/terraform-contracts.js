@@ -7,7 +7,7 @@ const principals = ['22222222-2222-2222-2222-222222222222', '33333333-3333-3333-
 const role = `${subscription}/providers/Microsoft.Authorization/roleDefinitions/ba92f5b4-2d11-453d-a403-e96b0029c9fe`;
 
 export function checkCallerPlans(directory, stdout) {
-  const match = /^(environments|bootstrap)\/(dev|qa|preprod|prod)$/.exec(directory);
+  const match = directory === 'subscription-controls' ? ['', 'subscription-controls'] : /^(environments|bootstrap)\/(dev|qa|preprod|prod)$/.exec(directory);
   assert.ok(match, 'Select an existing environment or bootstrap caller');
   const [, kind, environment] = match;
   let events;
@@ -32,7 +32,24 @@ export function checkCallerPlans(directory, stdout) {
     return matches[0].change.after;
   }
 
-  if (kind === 'environments') {
+  if (kind === 'subscription-controls') {
+    assert.deepEqual(plan('budget_absent').resource_changes ?? [], [], 'Default must create no subscription controls');
+    const enabled = plan('budget_contract');
+    assert.deepEqual(enabled.resource_changes.map(change => change.address), ['azapi_resource.budget[0]'], 'Only one subscription budget is allowed');
+    const budget = resource(enabled, 'azapi_resource.budget[0]');
+    assert.equal(budget.parent_id, subscription, 'Budget subscription scope');
+    assert.equal(budget.type, 'Microsoft.Consumption/budgets@2024-08-01', 'Budget API version');
+    assert.ok(budget.location == null || budget.location === '', 'Subscription budget has no region');
+    assert.deepEqual(budget.body, { properties: {
+      amount: 300, category: 'Cost', timeGrain: 'Monthly',
+      timePeriod: { startDate: '2026-11-01T00:00:00Z', endDate: '2027-11-01T00:00:00Z' },
+      notifications: Object.fromEntries([['actual_50',50,'Actual'],['actual_80',80,'Actual'],['actual_100',100,'Actual'],['forecast_100',100,'Forecasted']].map(([key,threshold,thresholdType]) => [key, {
+        enabled: true, operator: 'GreaterThanOrEqualTo', threshold, thresholdType,
+        contactEmails: ['FinOps+alerts@example.com', 'operators@example.com'], contactGroups: [], contactRoles: [],
+      }])),
+    } }, 'Approved unfiltered budget and email-only notification contract');
+    assert.deepEqual(enabled.output_changes.budget.after, { id: budget.id, name: 'pipesor-monthly' }, 'Budget exports identity only');
+  } else if (kind === 'environments') {
     const baseline = plan(`${environment}_root_contract`);
     assert.ok(!(baseline.resource_changes ?? []).some(change => change.address.startsWith('module.foundry[')), 'Opt-out must plan no Foundry resources');
     assert.ok(!(baseline.resource_changes ?? []).some(change => change.address.startsWith('module.container_platform[')), 'Opt-out must plan no platform resources');
@@ -191,7 +208,7 @@ export function checkCallerPlans(directory, stdout) {
 if (import.meta.main) {
   const directory = process.argv[2];
   const module = /^modules\/(resource-group|state-store|container-platform|service-bus|postgresql|application-insights|foundry|static-web-app)$/.test(directory);
-  assert.ok(module || /^(environments|bootstrap)\/(dev|qa|preprod|prod)$/.test(directory), 'Select one reviewed Terraform directory');
+  assert.ok(module || directory === 'subscription-controls' || /^(environments|bootstrap)\/(dev|qa|preprod|prod)$/.test(directory), 'Select one reviewed Terraform directory');
   const command = ['terraform', `-chdir=${directory}`, 'test', '-filter=tests/contract.tftest.hcl'];
   if (!module) command.push('-json', '-verbose');
   const result = Bun.spawnSync(command, { cwd: resolve(import.meta.dir, '..'), stdout: 'pipe', stderr: 'pipe' });
