@@ -81,6 +81,7 @@ API routing and runtime configuration contracts. It authorizes no domain binding
 | API perimeter | ACA native ingress is approved for the MVP under [ADR 003](adr-003-mvp-native-ingress.md). No dedicated gateway. Per-service exposure, Entra authentication and application authorization contracts remain open; absence of WAF and centralized rate limiting is an accepted limitation requiring reassessment if mandatory policy demands them. |
 | Evidence retention | Workload Blob Storage is excluded by the decision above; evidence-retention and retrieval guarantees remain open. Terraform state storage is separate. |
 | Images and credentials | GHCR is selected for the MVP; no ACR is needed. Image delivery, private-pull credential ownership/rotation and secret handling remain open without inferring Key Vault. |
+| ACA runtime identities | System-assigned identity per future Container App is approved on 2026-11-06. It is created with the app, not as a standalone resource. Service execution/access contracts and scoped grants remain pending; this does not select user/workflow authentication. |
 | AI | Microsoft Foundry account/project with public Entra-only access is approved; see the shared Foundry foundation below. Concrete model deployments, embedding ownership/dimensions and authorized corpus lifecycle remain open. |
 
 Account identifiers, region and environment-specific values can remain required
