@@ -7,7 +7,23 @@ independent roots. Each defines a dedicated `rg-pipesor-state-<environment>` gro
 one Standard StorageV2 account and one private `tfstate-<environment>` container.
 Workload groups and their existing roots remain separate. Account names are
 explicit inputs because they are globally unique; names are never reservations.
-Choose distinct names and identities for all four environments.
+Choose distinct names and identities for all four environments when commissioned.
+
+`bootstrap/admin` separately owns `rg-pipesor-state-admin`, its own account and
+`tfstate-admin` container for `subscription-controls/budget.tfstate`. It is an
+administrative state scope, not a fifth workload environment; its initial local
+bootstrap state must remain independently recoverable. The root exports backend
+settings without modifying or initializing `subscription-controls`.
+
+[ADR 004](adr-004-mvp-state-and-deployment.md) selects only dev and administrative
+state accounts for the eventual academic MVP; do not provision the other three.
+All provisioning waits for implemented, locally integrated and validated services
+and explicit target/action authorization. WSL Azure CLI is acceptable for Jhon's
+bootstrap/preparation; Actions OIDC on the proposed dedicated Debian VirtualBox
+runner is the target for later MVP workload execution. Jhon reviews/authorizes dev
+plans procedurally within Ramiro's initial access/scope boundaries; there is no
+independent GitHub Free deployment gate or per-run credential release. Activation
+still requires application readiness, access and verified runner/network isolation.
 
 The requested operator access is a public endpoint restricted to approved IPs.
 The firewall defaults to Deny with no trusted-service bypass. Anonymous blob access,
@@ -18,23 +34,29 @@ are created. The bootstrap operator separately needs resource creation and role
 assignment permissions; workload state users need neither management privilege.
 
 Blob versioning and blob/container soft deletion protect previous state versions
-and deleted data. Recovery days and replication are required reviewed inputs.
-They are not derived from the application's 365-day retention policy. No lifecycle
-rule deletes previous state versions automatically. Version retention can incur
-storage costs and requires a later reviewed maintenance policy.
+and deleted data. MVP dev/admin examples now explicitly select LRS and 30-day
+blob/container soft deletion. Reusable modules still require explicit values;
+production redundancy remains deferred. These choices are independent of the
+application's 365-day evidence policy. Soft-delete days do not expire old blob
+versions. No lifecycle cleanup rule is introduced; accumulated versions can incur
+cost and require later reviewed maintenance.
 
 ## Inputs still required
 
-No real deployment values are committed. Copy the root's `terraform.tfvars.example`
-to a local ignored variable file only after reviewing:
+Dev/admin examples include the owner-verified temporary subscription and tenant
+from ADR 004 plus the agreed LRS/30-day choices. They remain nondeployable examples,
+not default inputs or evidence of Jhon's access. Other environments retain generic
+placeholders. Before creating any ignored local variable file, review:
 
-- Target tenant/subscription, region and globally available storage-account name.
-- Supported regional replication and its cost/recovery tradeoff. LRS is the least
-  redundant option; ZRS distributes across availability zones where supported;
-  geo-replication adds regional recovery considerations. No default is selected.
-- An explicit 1–365 day soft-delete recovery window, separate from workload policy.
-- Environment-specific Entra principal object IDs, including operator access where
-  needed, and approved public egress IP addresses/ranges.
+- Active target context, pending region and globally available account names.
+- Actual offer/region support and complete costs for dev plus administrative state.
+- Pending Entra principal object IDs and exact approved role scopes; institutional
+  email ownership is not an access grant or a principal identifier.
+- Pending approved public egress IPs/ranges and the execution network. Jhon's WSL
+  preparation path does not establish a supported Actions runner path.
+- Custody paths, verified age public recipients/private-key recovery and restore
+  procedure. Independent encrypted backup retention is now an initial 90 days;
+  the backend's separate 30-day soft deletion remains unchanged.
 
 Review all four configurations together. Input validation within one root cannot
 prove that a nonproduction principal has not also been granted production access.
@@ -59,12 +81,23 @@ actual approved execution network; successful ARM provisioning is insufficient.
 ## Bootstrap state custody and authorization
 
 These roots explicitly use the local backend because the store does not exist yet.
-Before any real initialization/plan/apply, the authorized operator must choose a
-protected state path outside the checkout on encrypted storage with restricted file
-permissions, secure backup and a named custodian. Set restrictive permissions before
-initialization and retain the local backup state too. Never put bootstrap state,
-plans, backend metadata or credentials in Git or PR artifacts. Do not rely on an
-unbacked-up laptop directory or temporary CI runner for long-term custody.
+Jhon is the primary custodian/operator; Ramiro is backup custodian and subscription
+owner/initial access authorizer, not the routine executor. Before real initialization,
+choose a protected state path outside the checkout on encrypted storage with
+restricted file permissions. Maintain encrypted backups in Jhon's OneDrive Personal
+and independent external storage. Encrypt before upload/copy; keep decryption
+material separate. Use age encryption to both verified public recipients for
+independent Jhon/Ramiro recovery and retain encrypted backups for an initial 90 days;
+verify both custodians' decryption and integrity checks. Retain local backup state too. Never put bootstrap state, saved plans,
+backend metadata or credentials in Git. An unbacked-up laptop or temporary runner
+is insufficient custody.
+
+After each approved apply, back up the corresponding current state independently
+and record non-sensitive verification evidence. Target recovery is 24–48 hours;
+it remains untested until an explicitly authorized restore drill. Database recovery
+is separate and multiregional recovery is deferred. The existing private repository
+holds non-sensitive approvals/digests and backup confirmation, never state, saved
+plans, decryption material or sensitive plan/log output.
 
 The bootstrap state must remain outside the workload state it manages. Moving it
 to an independently established administrative backend is a separate authorized
@@ -77,8 +110,8 @@ apply. Provision/register the required Azure resource providers separately if
 necessary; registration is disabled here. Verify the configured network rules,
 Entra-only access, role scopes and recovery behavior against Azure before use.
 A later authorized backend operation uses this root's nonsecret `backend` output
-for the corresponding workload root, with tenant/identity supplied by the approved
-execution environment. Keep `use_azuread_auth = true`; never add storage keys.
+for the corresponding workload or subscription-controls root, with tenant/identity
+supplied by the approved execution environment. Keep `use_azuread_auth = true`; never add storage keys.
 
 The azurerm backend uses Blob leases for state locking. This implementation does
 not test real leases, access propagation or restoration. Recovery of a prior blob
@@ -90,7 +123,8 @@ privileged account deletion; deletion controls require an operational decision.
 ## Local verification and test boundaries
 
 Run the existing formatting checks from the repository root. For
-`modules/state-store` and each `bootstrap/<environment>` directory, use:
+`modules/state-store`, each `bootstrap/<environment>` directory and
+`bootstrap/admin`, use:
 
 ```sh
 terraform init -backend=false -input=false -lockfile=readonly
@@ -104,8 +138,9 @@ for authentication, transport, firewall, recovery and private containers, and
 resource-backed grant outputs for role/principal scope. Synthetic computed IDs
 bridge provider-only values; no security body values are supplied by mocks.
 Negative cases reject malformed/insecure inputs; caller tests guard environment
-identity and backend wiring. They establish Terraform contracts, not Azure API
-acceptance, network reachability, authorization or successful recovery.
+and administrative identity/backend wiring. Independent caller assertions also
+verify admin LRS/30-day configuration, private container and container-scoped grants.
+They establish Terraform contracts, not Azure API acceptance, network reachability, authorization or successful recovery.
 
 ## Dependencies and references
 

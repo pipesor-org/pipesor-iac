@@ -7,7 +7,7 @@ const principals = ['22222222-2222-2222-2222-222222222222', '33333333-3333-3333-
 const role = `${subscription}/providers/Microsoft.Authorization/roleDefinitions/ba92f5b4-2d11-453d-a403-e96b0029c9fe`;
 
 export function checkCallerPlans(directory, stdout) {
-  const match = directory === 'subscription-controls' ? ['', 'subscription-controls'] : /^(environments|bootstrap)\/(dev|qa|preprod|prod)$/.exec(directory);
+  const match = directory === 'subscription-controls' ? ['', 'subscription-controls'] : directory === 'bootstrap/admin' ? ['', 'bootstrap', 'admin'] : /^(environments|bootstrap)\/(dev|qa|preprod|prod)$/.exec(directory);
   assert.ok(match, 'Select an existing environment or bootstrap caller');
   const [, kind, environment] = match;
   let events;
@@ -194,10 +194,10 @@ export function checkCallerPlans(directory, stdout) {
     assert.equal(storage.parent_id, group, 'State account resource group');
     assert.equal(storage.location, 'testregion', 'Caller storage location');
     assert.equal(storage.name, environment === 'preprod' ? 'pipesorstatepreprod' : `pipesorstatefixture${environment}`, 'Caller account name');
-    assert.equal(storage.body.sku.name, 'Standard_ZRS', 'Caller replication');
+    assert.equal(storage.body.sku.name, environment === 'admin' ? 'Standard_LRS' : 'Standard_ZRS', 'Caller replication');
     assert.deepEqual(storage.body.properties.networkAcls.ipRules.map(rule => rule.value).sort(), ['198.51.100.5', '203.0.113.0/24'], 'Caller operator allowlist');
     for (const policy of ['deleteRetentionPolicy', 'containerDeleteRetentionPolicy']) {
-      assert.equal(recovery.body.properties[policy].days, 17, 'Caller recovery window');
+      assert.equal(recovery.body.properties[policy].days, environment === 'admin' ? 30 : 17, 'Caller recovery window');
     }
     assert.ok(container.id, 'Missing mocked container ID');
     const grants = (configured.resource_changes ?? []).filter(change => change.type === 'azapi_resource' && change.change.after?.type?.startsWith('Microsoft.Authorization/roleAssignments@')).map(change => change.change.after);
@@ -208,7 +208,7 @@ export function checkCallerPlans(directory, stdout) {
 if (import.meta.main) {
   const directory = process.argv[2];
   const module = /^modules\/(resource-group|state-store|container-platform|service-bus|postgresql|application-insights|foundry|static-web-app)$/.test(directory);
-  assert.ok(module || directory === 'subscription-controls' || /^(environments|bootstrap)\/(dev|qa|preprod|prod)$/.test(directory), 'Select one reviewed Terraform directory');
+  assert.ok(module || directory === 'subscription-controls' || directory === 'bootstrap/admin' || /^(environments|bootstrap)\/(dev|qa|preprod|prod)$/.test(directory), 'Select one reviewed Terraform directory');
   const command = ['terraform', `-chdir=${directory}`, 'test', '-filter=tests/contract.tftest.hcl'];
   if (!module) command.push('-json', '-verbose');
   const result = Bun.spawnSync(command, { cwd: resolve(import.meta.dir, '..'), stdout: 'pipe', stderr: 'pipe' });

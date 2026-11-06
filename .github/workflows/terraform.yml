@@ -25,6 +25,7 @@ jobs:
           - modules/service-bus
           - modules/container-platform
           - modules/state-store
+          - bootstrap/admin
           - bootstrap/dev
           - bootstrap/qa
           - bootstrap/preprod

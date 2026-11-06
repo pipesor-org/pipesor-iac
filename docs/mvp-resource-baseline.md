@@ -12,12 +12,18 @@ Share infrastructure among services within an environment. Preserve separate
 `dev`, `qa`, `preprod` and `prod` roots, states and access boundaries under
 [ADR 001](adr-001-branching-and-promotion.md). Four roots do not require four
 continuously provisioned workload stacks; promotion prerequisites still apply.
+[ADR 004](adr-004-mvp-state-and-deployment.md) selects **only dev** for the current
+academic MVP. No infrastructure, including bootstrap and subscription controls,
+may be deployed until services are implemented, integrated locally and validated,
+then explicitly authorized.
 
-Resource decisions follow this cost-optimized MVP direction without a $100 Azure
-for Students ceiling. Pay-as-you-go is the expected funding model, not a verified
-subscription upgrade. Use `cloud_researcher` to estimate the complete footprint
-before provisioning and compare forecasts with actual costs once deployed. This
-does not select remaining resource options or authorize spending or Azure writes.
+The temporary target is now Ramiro's Active Azure for Students subscription in
+the UPC tenant, as recorded in ADR 004; earlier expected PAYG funding is superseded.
+Do not infer credit availability, USD currency, quotas or SKU eligibility. Use
+`cloud_researcher` to revalidate the complete footprint against the actual offer
+before provisioning and compare estimates with measured costs after authorized
+deployment. A future rebuild belongs in project-controlled Azure. These decisions
+do not authorize spending or Azure writes.
 
 The user also explicitly selected a customer-managed VNet with a dedicated ACA
 subnet, an **external-capable** environment, and creation of a shared Log Analytics
@@ -47,13 +53,17 @@ The separate Azure Blob backend for Terraform state remains in scope.
 
 The [dated cost projection](mvp-cost-projection.md) separates checked-in defaults
 from enabled-foundation scenarios and omitted workload/state costs. It preserves
-the $300 target and the selected dedicated-subscription layout.
+the $300 planning target; its earlier dedicated-subscription/PAYG assumptions
+require reconciliation with ADR 004's temporary Students target before deployment.
 
-The [subscription cost-notification decision](subscription-controls.md) approves
-one 300 USD monthly budget for the confirmed dedicated USD subscription, in its
-own root/state, with email-only Actual 50/80/100 and Forecasted 100 alerts. It does
-not allocate 300 to each environment or stop spending. Dates, recipients and state
-custody remain deployment inputs.
+The earlier [subscription cost-notification decision](subscription-controls.md)
+approved one 300 USD monthly budget under dedicated-subscription/USD assumptions,
+in its own root/state, with email-only Actual 50/80/100 and Forecasted 100 alerts. It does
+not allocate 300 to each environment or stop spending. Dates and recipients remain
+deployment inputs. ADR 004 now fixes state custody; offer eligibility, actual
+currency and scope must be rechecked for the temporary subscription with the
+subscription-controls owner. That root remains under the other orchestrator's
+ownership.
 
 The [increment priorities](infrastructure-priorities.md) distinguish independent
 local verification work from resource increments blocked on accepted contracts.

@@ -4,6 +4,8 @@ Terraform foundation for Pipesor's planned Microsoft Azure infrastructure, with 
 
 ## Current state
 
+- [ADR 004](docs/adr-004-mvp-state-and-deployment.md) selects **dev only** for the academic MVP in Ramiro's temporary Azure for Students/UPC tenant. Deployment waits for implemented, locally integrated and validated services plus explicit authorization. GitHub Actions OIDC on Jhon's proposed Debian VirtualBox VM is the deployment target, with procedural dev approvals on GitHub Free. Capacity/isolation/network, Azure access and activation remain unverified.
+
 - [Static Web Apps Free](docs/mvp-resource-baseline.md#static-web-apps-free-hosting) is opt-in per environment for a public static shell only. Authentication, domains and delivery remain separate.
 
 - [Microsoft Foundry](docs/mvp-resource-baseline.md#shared-microsoft-foundry-foundation) is opt-in per environment: one public Entra-only account/project. Model deployments and runtime grants remain deferred.
@@ -14,7 +16,7 @@ Terraform foundation for Pipesor's planned Microsoft Azure infrastructure, with 
 
 - [Service Bus foundation](docs/mvp-resource-baseline.md#shared-messaging-foundation) is opt-in per environment: one public, Entra-only Standard namespace. Messaging entities and service grants remain deferred.
 - [MVP container platform](docs/mvp-resource-baseline.md) is opt-in per environment: a shared Consumption environment, VNet/delegated subnet and monitoring workspace. No service applications are defined.
-- [State bootstrap](docs/state-bootstrap.md) defines isolated state accounts and containers using required deployment inputs. No state store has been created; bootstrap state custody and real operations require separate authorization.
+- [State bootstrap](docs/state-bootstrap.md) defines isolated environment state accounts and a separate administrative account/container for subscription controls, using explicit deployment inputs. No state store has been created; bootstrap state custody and real operations require separate authorization.
 - Four roots define one resource group each: `dev`, `qa`, `preprod` and `prod`. No Azure resources or remote backends have been deployed.
 - Subscription IDs and resource-group metadata locations are required inputs without defaults. Service apps, workload identities and secrets remain outside this increment; the optional platform requires explicit network allocation and telemetry limits.
 - Environment isolation and promotion are an accepted target strategy, not implemented deployment automation.
@@ -49,7 +51,7 @@ test file. All tests replace AzAPI with a mock and use plan-only runs; `testregi
 and the UUID in tests are synthetic fixtures, not selected Azure inputs.
 
 ```sh
-for directory in modules/resource-group modules/state-store modules/container-platform modules/service-bus modules/postgresql modules/application-insights modules/foundry modules/static-web-app environments/dev environments/qa environments/preprod environments/prod bootstrap/dev bootstrap/qa bootstrap/preprod bootstrap/prod subscription-controls; do
+for directory in modules/resource-group modules/state-store modules/container-platform modules/service-bus modules/postgresql modules/application-insights modules/foundry modules/static-web-app environments/dev environments/qa environments/preprod environments/prod bootstrap/dev bootstrap/qa bootstrap/preprod bootstrap/prod bootstrap/admin subscription-controls; do
   terraform -chdir="$directory" init -backend=false -input=false -lockfile=readonly
   terraform -chdir="$directory" validate
   bun tests/terraform-contracts.js "$directory"
@@ -59,6 +61,8 @@ done
 Run these checks without Azure write credentials. Backend-disabled initialization
 does not connect to remote state. Validation and mocked plans do not prove Azure
 deployability, permissions, region availability, backend access or workload health.
+For the inactive deployment scaffold, run `bun test tests/deployment-scaffold.test.js`
+to check its disabled/manual/dev-only boundaries without credentials.
 The [Terraform workflow](.github/workflows/terraform.yml) runs these credential-free
 checks for all listed modules and roots on PRs and pushes to `main`; it has no Azure login,
 OIDC permission, plan artifact or deployment job.
@@ -70,7 +74,8 @@ does not save or print plan JSON. Mocked provider outputs do not verify provider
 authentication or the target subscription selected by the real provider.
 
 `terraform.tfvars.example` and `backend.tfbackend.example` beside each workload root document
-required inputs with placeholders. Backend creation and access setup are a separate
+required inputs; dev/bootstrap examples include the owner-verified temporary target
+while unverified deployment inputs remain placeholders. Backend creation and access setup are a separate
 authorized task; no state store exists here. Do not run a real plan until tenant,
 subscription, environment, backend and side effects have been reviewed under
 [AGENTS.md](AGENTS.md#authorization).
@@ -93,6 +98,8 @@ The [Commitlint workflow](.github/workflows/commitlint.yml) validates hook confi
 - [ADR 002 (proposed)](docs/adr-002-terraform-module-composition.md): module composition, capability boundaries and their distinction from state isolation.
 - [Foundry foundation](docs/mvp-resource-baseline.md#shared-microsoft-foundry-foundation): optional public Entra-only account/project; models and caller access remain deferred.
 - [ADR 003](docs/adr-003-mvp-native-ingress.md): approved ACA native ingress for the MVP, application security responsibilities and accepted gateway limitations.
+- [ADR 004](docs/adr-004-mvp-state-and-deployment.md): dev-only temporary hosting, Debian VM runner, procedural approvals, encrypted plans (one day) and state backups (90 days).
+- [Deployment runbook](docs/mvp-deployment-runbook.md) and [inactive workflow scaffold](.github/workflow-templates/terraform-dev.yml.example): activation checks, disposable runner lifecycle and age recovery procedure; no deployment workflow is enabled.
 - [Agent and engineering guidance](AGENTS.md): coordination, documentation tools, authorization boundaries, and verification.
 - [Optional Codex setup](.codex/README.md): repository-local roles, configuration, and startup checks.
 - [lefthook.yml](lefthook.yml), [commitlint.config.js](commitlint.config.js), and [hook tests](tests/commit-msg.sh): local commit validation.
@@ -103,7 +110,11 @@ Codex is optional for editing documentation and running local checks. For infras
 
 ## Promotion and authorization
 
-The target flow promotes the same immutable Git SHA through `dev` → `qa` → `preprod` → `prod`, with separate roots/states and a fresh reviewed plan for each environment. [ADR 001](docs/adr-001-branching-and-promotion.md) defines sequencing, evidence, and independent approvals; the roots are present, while state isolation and deployment automation still require separate implementation and authorization.
+The academic MVP provisions only `dev` after ADR 004 readiness checks and separate
+activation authorization. Ramiro approves initial Azure access/scope; Jhon reviews
+and explicitly authorizes each subsequent dev plan. GitHub Free/private does not
+enforce independent deployment approval; the MVP accepts procedural controls.
+The later target flow promotes the same immutable Git SHA through `dev` → `qa` → `preprod` → `prod`, with separate roots/states and a fresh reviewed plan for each environment. [ADR 001](docs/adr-001-branching-and-promotion.md) defines sequencing, evidence, and independent approvals; the roots are present, while state isolation and deployment automation still require separate implementation and authorization.
 
 Explicit human authorization for the target and action is required before Azure writes, applies, destroys, real-resource tests, or state mutations. PR approval and agent review do not replace environment-specific plan review or deployment approval. Follow [AGENTS.md authorization](AGENTS.md#authorization) before any such operation.
 

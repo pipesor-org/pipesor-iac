@@ -1,5 +1,7 @@
+# Temporary Azure for Students / UPC target verified by the owner on 2026-11-06.
+# Dev only; no deployment before local application integration and explicit authorization.
 # Replace with reviewed environment values; these placeholders are not deployment inputs.
-subscription_id = "<target-subscription-uuid>"
+subscription_id = "04f339b7-f969-4e17-801c-da6e81e78ffd"
 location        = "<approved-azure-region-code>"
 
 # Keep null until this environment is explicitly selected for platform provisioning.
@@ -26,7 +28,7 @@ postgresql = null
 #   server_name = "<globally-available-server-name>"
 #   location = "<same-region-as-platform>"
 #   subnet_prefix = "<dedicated-postgresql-subnet-cidr>"
-#   tenant_id = "<tenant-uuid>"
+#   tenant_id = "0e0cb060-09ad-49f5-a005-68b9b49aa1f6"
 #   administrator = {
 #     object_id = "<entra-administrator-object-uuid>"
 #     principal_name = "<entra-administrator-name>"

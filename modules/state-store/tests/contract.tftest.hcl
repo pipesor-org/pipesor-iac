@@ -376,3 +376,30 @@ run "accept_recovery_365_and_smallest_egress_range" {
     error_message = "Supported recovery and operator CIDR boundaries must reach the effective resources."
   }
 }
+
+run "administrative_mvp_state_contract" {
+  command = plan
+  variables {
+    environment = "admin"
+    settings = {
+      account_name  = "pipesorstatefixtureadmin"
+      location      = "testregion"
+      replication   = "LRS"
+      recovery_days = 30
+      principal_ids = ["22222222-2222-2222-2222-222222222222"]
+      allowed_ips   = ["198.51.100.5"]
+    }
+  }
+  assert {
+    condition     = output.backend.storage_account_name == "pipesorstatefixtureadmin" && output.backend.container_name == "tfstate-admin" && output.backend.key == "subscription-controls/budget.tfstate" && output.backend.use_azuread_auth == true && output.resource_group_name == "rg-pipesor-state-admin"
+    error_message = "Administrative state must retain its own account, group, container and subscription-controls key."
+  }
+  assert {
+    condition     = module.storage.resource.body.sku.name == "Standard_LRS" && module.blob_service.resource.body.properties.isVersioningEnabled == true && module.blob_service.resource.body.properties.deleteRetentionPolicy.enabled == true && module.blob_service.resource.body.properties.deleteRetentionPolicy.days == 30 && module.blob_service.resource.body.properties.containerDeleteRetentionPolicy.enabled == true && module.blob_service.resource.body.properties.containerDeleteRetentionPolicy.days == 30
+    error_message = "MVP administrative state must preserve explicit LRS, versioning and 30-day blob/container soft deletion."
+  }
+  assert {
+    condition     = module.storage.resource.body.properties.allowSharedKeyAccess == false && module.storage.resource.body.properties.allowBlobPublicAccess == false && module.storage.resource.body.properties.networkAcls.defaultAction == "Deny" && module.storage.resource.body.properties.networkAcls.bypass == "None" && module.container.resource.body.properties.publicAccess == "None"
+    error_message = "Administrative state must retain Entra-only private blobs and deny unmatched networks."
+  }
+}

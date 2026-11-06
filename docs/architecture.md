@@ -3,7 +3,12 @@
 This foundation defines one resource group in each of four Terraform roots and an
 optional shared MVP container platform, Service Bus namespace, PostgreSQL server,
 Application Insights component, Microsoft Foundry account/project and Static Web Apps Free site per environment; it is not an Azure landing zone. No resources or remote backends have been deployed.
-Subscriptions and metadata locations are required inputs, with no selected values.
+The academic MVP selects only `dev` in Ramiro's temporary Azure for Students
+subscription/UPC tenant; [ADR 004](adr-004-mvp-state-and-deployment.md) records the
+verified target, custody and deployment gates. No infrastructure may be deployed
+until application services are implemented, integrated locally and validated,
+followed by explicit deployment authorization. Other environments remain unprovisioned.
+Subscriptions remain explicit inputs; metadata locations are pending.
 Workload regions and network allocations require explicit inputs. Service capacity,
 identity configuration and delivery contracts remain undecided. The Azure service selections and their limits are
 recorded in [architecture consumption](architecture-consumption.md). No cloud CI
@@ -38,9 +43,11 @@ declarations and placeholder templates do not create a backend; only backend-dis
 verification.
 
 The intended state store is Azure Blob Storage with a unique key per environment
-and component, locking, recovery protection and scoped Entra ID access. Prefer
-OIDC for future automation and developer identity for interactive work; avoid
-storage keys and long-lived client secrets. Separate production access from
+and component, locking, recovery protection and scoped Entra ID access. Target
+GitHub Actions OIDC for MVP deployments using ADR 004's proposed Debian VirtualBox
+runner and accepted procedural dev approval model. Activation still requires
+application readiness, verified access/network/isolation and explicit authorization. Use Jhon's developer identity for authorized WSL bootstrap
+and preparation; avoid storage keys and long-lived client secrets. Separate production access from
 nonproduction. State can contain secrets even when outputs are marked sensitive.
 Backend bootstrap is a separately authorized task, outside the workload state it
 will host. [State bootstrap](state-bootstrap.md) defines the separate configuration and custody
@@ -129,11 +136,16 @@ placed into it later. No existing resources are imported or adopted by this code
 
 ## State bootstrap
 
-`modules/state-store` and four `bootstrap/<environment>` callers implement the
-separate state-store prerequisite described in [state bootstrap](state-bootstrap.md).
+`modules/state-store`, four `bootstrap/<environment>` callers and a separate
+`bootstrap/admin` caller implement the prerequisite described in
+[state bootstrap](state-bootstrap.md). Only dev and administrative state accounts
+are selected for the eventual MVP. The administrative account/container serves
+`subscription-controls`; its own bootstrap state retains independent local custody.
 The user selected a public endpoint restricted to approved operator IPs; the
 configuration denies other networks and grants explicit container-scoped Entra
-access. Account details, redundancy and recovery windows remain required inputs.
+access. MVP examples explicitly select LRS and 30-day soft deletion with versioning;
+account names, regions, principals and IPs remain pending. Generic inputs retain
+parameterization, and no actual backend is initialized.
 These infrastructure state controls do not select workload storage, retention,
 secret management or network topology.
 
@@ -200,8 +212,13 @@ before real operational use; public assets must contain no sensitive data/secret
 ## Subscription cost notifications
 
 The [subscription controls](subscription-controls.md) define one optional unfiltered
-300 USD calendar-month budget for the confirmed dedicated USD subscription.
+300 calendar-month budget under the earlier dedicated-subscription/USD decision.
+The amount and notification policy remain unchanged; offer eligibility, currency
+and scope must be revalidated for ADR 004's temporary Students subscription.
 Actual 50/80/100 and forecast 100 percent notifications are email-only. The separate
 root/state creates no automation and does not cap spending. Explicit dates,
-recipients and backend custody remain reviewed deployment inputs; all Azure/state
-operations retain existing human approval gates.
+recipients, backend wiring and permissions remain reviewed deployment inputs.
+ADR 004 names Jhon/Ramiro as primary/backup custodians and selects encrypted state
+backups with 90-day retention. Custody paths, keys and restore verification remain
+pending. All Azure/state operations retain human approval
+gates; the subscription-controls root remains under its existing orchestrator.
