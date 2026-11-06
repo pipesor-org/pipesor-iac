@@ -111,6 +111,59 @@ export function checkCallerPlans(directory, stdout) {
     assert.equal(pgSubnet.body.properties.addressPrefix, '10.50.2.0/28', 'Database caller allocation');
     assert.equal(admin.name, principals[0], 'Database caller administrator');
     assert.equal(server.body.properties.authConfig.tenantId, subscription.split('/')[2], 'Database caller tenant');
+    const combined = plan('combined_foundations_contract');
+    const approvedResources = new Set([
+      'module.resource_group.module.resource_group.azapi_resource.this',
+      ...['network', 'subnet', 'workspace', 'environment', 'logs'].map(name => prefix + name),
+      ...['subnet', 'dns', 'dns_link', 'server', 'administrator'].map(name => pgPrefix + name),
+      'module.postgresql[0].azapi_update_resource.extensions',
+      'module.application_insights[0].azapi_resource.component',
+      'module.service_bus[0].azapi_resource.namespace',
+      'module.foundry[0].azapi_resource.account',
+      'module.foundry[0].azapi_resource.project',
+      'module.static_web_app[0].azapi_resource.site',
+    ]);
+    for (const change of combined.resource_changes ?? []) {
+      // Resource-group AVM helpers remain owned by the pinned upstream module.
+      const groupHelper = change.address.startsWith('module.resource_group.') && !change.type?.startsWith('azapi_');
+      assert.ok(change.mode === 'data' || groupHelper || approvedResources.has(change.address), 'Combined scope contains only approved foundation resources');
+    }
+    const shared = resource(combined, prefix + 'network');
+    const acaSubnet = resource(combined, prefix + 'subnet');
+    const logs = resource(combined, prefix + 'workspace');
+    const aca = resource(combined, prefix + 'environment');
+    const database = resource(combined, pgPrefix + 'server');
+    const databaseSubnet = resource(combined, pgPrefix + 'subnet');
+    const dns = resource(combined, pgPrefix + 'dns');
+    const dnsLink = resource(combined, pgPrefix + 'dns_link');
+    const insights = resource(combined, 'module.application_insights[0].azapi_resource.component');
+    const bus = resource(combined, 'module.service_bus[0].azapi_resource.namespace');
+    const ai = resource(combined, 'module.foundry[0].azapi_resource.account');
+    const aiProject = resource(combined, 'module.foundry[0].azapi_resource.project');
+    const site = resource(combined, 'module.static_web_app[0].azapi_resource.site');
+    for (const item of [shared, logs, aca, database, insights, bus, ai, site]) {
+      assert.equal(item.parent_id, group, 'Combined foundation environment boundary');
+      assert.ok(item.id?.startsWith(group + '/providers/'), 'Combined foundation resource identity');
+    }
+    for (const [item, location] of [[shared, 'workloadregion'], [logs, 'workloadregion'], [aca, 'workloadregion'], [database, 'workloadregion'], [insights, 'workloadregion'], [bus, 'messagingregion'], [ai, 'airegion'], [aiProject, 'airegion'], [site, 'webregion']]) {
+      assert.equal(item.location, location, 'Combined explicit region forwarding');
+    }
+    assert.equal(databaseSubnet.parent_id, shared.id, 'Combined database VNet');
+    assert.equal(acaSubnet.parent_id, shared.id, 'Combined ACA VNet');
+    assert.notEqual(acaSubnet.id, databaseSubnet.id, 'Combined subnets must stay distinct');
+    assert.equal(aca.body.properties.vnetConfiguration.infrastructureSubnetId, acaSubnet.id, 'Combined ACA subnet binding');
+    assert.deepEqual(database.body.properties.network, { delegatedSubnetResourceId: databaseSubnet.id, privateDnsZoneArmResourceId: dns.id }, 'Combined database private connectivity');
+    assert.equal(dnsLink.parent_id, dns.id, 'Combined DNS zone parenting');
+    assert.equal(dnsLink.body.properties.virtualNetwork.id, shared.id, 'Combined private DNS VNet');
+    assert.equal(insights.body.properties.WorkspaceResourceId, logs.id, 'Combined telemetry workspace');
+    assert.equal(resource(combined, prefix + 'logs').body.properties.workspaceId, logs.id, 'Combined ACA logs workspace');
+    assert.equal(aiProject.parent_id, ai.id, 'Combined Foundry project parenting');
+    assert.deepEqual([logs.body.properties.features.disableLocalAuth, insights.body.properties.DisableLocalAuth, bus.body.properties.disableLocalAuth, ai.body.properties.disableLocalAuth], [true, true, true, true], 'Combined Entra-only security');
+    assert.equal(database.body.properties.authConfig.passwordAuth, 'Disabled', 'Combined database password security');
+    assert.deepEqual(site.body, web.body, 'Combined static hosting security');
+    for (const [key, expected] of Object.entries({ container_platform: { network_id: shared.id, infrastructure_subnet_id: acaSubnet.id, workspace_id: logs.id, environment_id: aca.id }, postgresql: { id: database.id, subnet_id: databaseSubnet.id, private_dns_zone_id: dns.id }, application_insights: { id: insights.id, workspace_id: logs.id }, service_bus: { id: bus.id }, foundry: { account_id: ai.id, project_id: aiProject.id }, static_web_app: { id: site.id } })) {
+      for (const [field, value] of Object.entries(expected)) assert.equal(combined.output_changes?.[key]?.after?.[field], value, 'Combined output wiring');
+    }
   } else {
     const configured = plan(`${environment}_bootstrap_isolation`);
     const group = `${subscription}/resourceGroups/rg-pipesor-state-${environment}`;

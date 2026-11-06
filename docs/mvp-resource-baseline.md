@@ -45,6 +45,9 @@ The separate Azure Blob backend for Terraform state remains in scope.
 
 ## Decisions still required for the affected resources
 
+The [increment priorities](infrastructure-priorities.md) distinguish independent
+local verification work from resource increments blocked on accepted contracts.
+
 The [domain and hosting reconciliation](domain-hosting-reconciliation.md) records
 the proposed Workers/SWA/ACA domain split, approved Free hosting and pending frontend authentication,
 API routing and runtime configuration contracts. It authorizes no domain bindings.
@@ -198,6 +201,8 @@ use rather than proving that no server-side key material exists.
 
 Topics, subscriptions, delivery settings and event contracts remain outside this
 increment. The modeled topology's PD-015 approval-provenance gap remains open; this
+is detailed in the [messaging assessment](messaging-topology-assessment.md), whose
+candidate topology remains explicitly deferred pending accepted contracts. The
 namespace approval does not resolve it. The existing shared network/workspace are
 not consumed by this namespace, so no proposed ADR 002 extraction is needed here.
 GHCR remains the chosen MVP image registry and does not select a credential store.
