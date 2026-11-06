@@ -2,7 +2,7 @@
 
 This foundation defines one resource group in each of four Terraform roots and an
 optional shared MVP container platform, Service Bus namespace, PostgreSQL server,
-Application Insights component and Microsoft Foundry account/project per environment; it is not an Azure landing zone. No resources or remote backends have been deployed.
+Application Insights component, Microsoft Foundry account/project and Static Web Apps Free site per environment; it is not an Azure landing zone. No resources or remote backends have been deployed.
 Subscriptions and metadata locations are required inputs, with no selected values.
 Workload regions and network allocations require explicit inputs. Service capacity,
 identity configuration and delivery contracts remain undecided. The Azure service selections and their limits are
@@ -186,3 +186,12 @@ Each root opts in independently through `foundry`; null adds no account or proje
 Explicit names and region are required. No model deployment, service access grant
 or application interface is inferred; model and processing-geography contracts
 remain separate decisions. Existing roots, state and approval gates are preserved.
+
+## Static Web Apps Free hosting
+
+The [hosting baseline](mvp-resource-baseline.md#static-web-apps-free-hosting) records
+approved public static hosting. Nullable `static_web_app` inputs add one Free site
+independently of ACA. Only identity and default hostname are exported. No content,
+authentication, domain binding, repository integration or delivery workflow is
+created. Entra application authentication and ACA API authorization remain required
+before real operational use; public assets must contain no sensitive data/secrets.

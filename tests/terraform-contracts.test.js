@@ -37,7 +37,9 @@ function environmentEvents() {
   const account = { id: `${group}/providers/Microsoft.CognitiveServices/accounts/test-pipesor-qa-ai`, parent_id: group, name: 'test-pipesor-qa-ai', location: 'airegion', tags: { environment: 'qa' }, body: { properties: { disableLocalAuth: true, publicNetworkAccess: 'Enabled' } }, output: { properties: { endpoint: 'synthetic' } } };
   const project = { id: `${account.id}/projects/pipesor-qa`, parent_id: account.id, name: 'pipesor-qa', location: 'airegion' };
   const foundry = { resource_changes: [resource('module.foundry[0].azapi_resource.account', account), resource('module.foundry[0].azapi_resource.project', project)], output_changes: { foundry: { after: { account_id: account.id, account_name: account.name, project_id: project.id, project_name: project.name, location: 'airegion', endpoint: 'synthetic' } } } };
-  return [...eventsFor('opt_in_foundry_contract', foundry), ...eventsFor('qa_root_contract', { resource_changes: [] }), ...eventsFor('opt_in_platform_contract', enabled), ...eventsFor('opt_in_postgresql_contract', databasePlan), ...eventsFor('opt_in_application_insights_contract', { resource_changes: [resource('module.container_platform[0].azapi_resource.workspace', workspace), resource('module.application_insights[0].azapi_resource.component', { parent_id: group, location: 'workloadregion', name: 'appipipesorqa', body: { properties: { WorkspaceResourceId: workspace.id, DisableLocalAuth: true } } })] }), summary];
+  const web = { id: `${group}/providers/Microsoft.Web/staticSites/test-pipesor-qa-web`, parent_id: group, name: 'test-pipesor-qa-web', location: 'webregion', tags: { environment: 'qa' }, body: { sku: { name: 'Free', tier: 'Free' }, properties: { publicNetworkAccess: 'Enabled', enterpriseGradeCdnStatus: 'Disabled', stagingEnvironmentPolicy: 'Disabled', buildProperties: { skipGithubActionWorkflowGeneration: true } } }, output: { properties: { defaultHostname: 'synthetic.azurestaticapps.net' } } };
+  const hosting = { resource_changes: [resource('module.static_web_app[0].azapi_resource.site', web)], output_changes: { static_web_app: { after: { id: web.id, name: web.name, location: 'webregion', default_hostname: 'synthetic.azurestaticapps.net' } } } };
+  return [...eventsFor('opt_in_static_web_app_contract', hosting), ...eventsFor('opt_in_foundry_contract', foundry), ...eventsFor('qa_root_contract', { resource_changes: [] }), ...eventsFor('opt_in_platform_contract', enabled), ...eventsFor('opt_in_postgresql_contract', databasePlan), ...eventsFor('opt_in_application_insights_contract', { resource_changes: [resource('module.container_platform[0].azapi_resource.workspace', workspace), resource('module.application_insights[0].azapi_resource.component', { parent_id: group, location: 'workloadregion', name: 'appipipesorqa', body: { properties: { WorkspaceResourceId: workspace.id, DisableLocalAuth: true } } })] }), summary];
 }
 
 function bootstrapEvents(environment = 'prod', account = 'pipesorstatefixtureprod') {
@@ -143,4 +145,22 @@ test('rejects unapproved resources added to Foundry scope', () => {
   const events = environmentEvents();
   events.find(event => event.type === 'test_plan' && event['@testrun'] === 'opt_in_foundry_contract').test_plan.resource_changes.push(resource('module.foundry[0].azapi_resource.deployment', {}));
   expect(() => checkCallerPlans('environments/qa', encode(events))).toThrow('Foundry scope contains only account and project');
+});
+
+test('rejects static hosting tier and repository integration regressions', () => {
+  const tier = environmentEvents();
+  changedResource(tier, 'module.static_web_app[0].azapi_resource.site').body.sku.name = 'Standard';
+  expect(() => checkCallerPlans('environments/qa', encode(tier))).toThrow('Static hosting must remain Free');
+  const repo = environmentEvents();
+  changedResource(repo, 'module.static_web_app[0].azapi_resource.site').body.properties.repositoryToken = 'synthetic';
+  expect(() => checkCallerPlans('environments/qa', encode(repo))).toThrow('Static hosting must remain Free');
+});
+
+test('rejects static hosting additions and wrong environment wiring', () => {
+  const extra = environmentEvents();
+  extra.find(event => event.type === 'test_plan' && event['@testrun'] === 'opt_in_static_web_app_contract').test_plan.resource_changes.push(resource('module.static_web_app[0].azapi_resource.domain', {}));
+  expect(() => checkCallerPlans('environments/qa', encode(extra))).toThrow('Static hosting scope contains only one site');
+  const parent = environmentEvents();
+  changedResource(parent, 'module.static_web_app[0].azapi_resource.site').parent_id = subscription;
+  expect(() => checkCallerPlans('environments/qa', encode(parent))).toThrow('Static hosting caller resource group');
 });

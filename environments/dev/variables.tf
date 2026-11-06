@@ -77,3 +77,9 @@ variable "foundry" {
   })
   default = null
 }
+
+variable "static_web_app" {
+  description = "Opt in to Free public static hosting only. Removing deployed configuration proposes destruction."
+  type        = object({ name = string, location = string })
+  default     = null
+}

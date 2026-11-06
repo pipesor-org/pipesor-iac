@@ -43,3 +43,9 @@ application_insights_enabled = false
 #   project_name = "pipesor-prod"
 #   location     = "replace-with-approved-region"
 # }
+
+# Optional Free public static hosting; no application content or authentication.
+# static_web_app = {
+#   name = "pipesor-prod-web"
+#   location = "replacewithregion"
+# }
