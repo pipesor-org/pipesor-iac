@@ -302,3 +302,103 @@ run "opt_in_static_web_app_contract" {
     error_message = "Static hosting must opt in independently with explicit inputs and service-reported hostname."
   }
 }
+
+run "combined_foundations_contract" {
+  command = plan
+  variables {
+    container_platform = {
+      location                     = "workloadregion"
+      vnet_address_prefix          = "10.50.0.0/16"
+      infrastructure_subnet_prefix = "10.50.1.0/24"
+      log_retention_days           = 45
+      log_daily_cap_gb             = 0.5
+    }
+    postgresql = {
+      server_name   = "test-pipesor-dev-pg"
+      location      = "workloadregion"
+      subnet_prefix = "10.50.2.0/28"
+      tenant_id     = "11111111-1111-1111-1111-111111111111"
+      administrator = { object_id = "22222222-2222-2222-2222-222222222222", principal_name = "test-admins", principal_type = "Group" }
+    }
+    service_bus = {
+      namespace_name = "test-pipesor-dev-bus"
+      location       = "messagingregion"
+    }
+    application_insights_enabled = true
+    foundry                      = { account_name = "test-pipesor-dev-ai", project_name = "pipesor-dev", location = "airegion" }
+    static_web_app               = { name = "test-pipesor-dev-web", location = "webregion" }
+  }
+  override_resource {
+    target          = module.resource_group.module.resource_group.azapi_resource.this
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.network
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.Network/virtualNetworks/vnet-pipesor-dev" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.subnet
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.Network/virtualNetworks/vnet-pipesor-dev/subnets/snet-pipesor-dev" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.workspace
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.OperationalInsights/workspaces/log-pipesor-dev" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.environment
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.App/managedEnvironments/caepipesordev" }
+  }
+  override_resource {
+    target          = module.postgresql[0].azapi_resource.subnet
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.Network/virtualNetworks/vnet-pipesor-dev/subnets/snet-pipesor-dev-postgresql" }
+  }
+  override_resource {
+    target          = module.postgresql[0].azapi_resource.dns
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.Network/privateDnsZones/pipesor-dev.postgres.database.azure.com" }
+  }
+  override_resource {
+    target          = module.postgresql[0].azapi_resource.server
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.DBforPostgreSQL/flexibleServers/test-pipesor-dev-pg", output = { properties = { fullyQualifiedDomainName = "fixture.postgres.database.azure.com" } } }
+  }
+  override_resource {
+    target          = module.service_bus[0].azapi_resource.namespace
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.ServiceBus/namespaces/test-pipesor-dev-bus" }
+  }
+  override_resource {
+    target          = module.application_insights[0].azapi_resource.component
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.Insights/components/appipipesordev", output = { properties = { ConnectionString = "synthetic-routing-fixture" } } }
+  }
+  override_resource {
+    target          = module.foundry[0].azapi_resource.account
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.CognitiveServices/accounts/test-pipesor-dev-ai", output = { properties = { endpoint = "https://synthetic.cognitiveservices.azure.com/" } } }
+  }
+  override_resource {
+    target          = module.foundry[0].azapi_resource.project
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.CognitiveServices/accounts/test-pipesor-dev-ai/projects/pipesor-dev" }
+  }
+  override_resource {
+    target          = module.static_web_app[0].azapi_resource.site
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.Web/staticSites/test-pipesor-dev-web", output = { properties = { defaultHostname = "synthetic.azurestaticapps.net" } } }
+  }
+  assert {
+    condition     = output.postgresql.subnet_id != output.container_platform.infrastructure_subnet_id && output.postgresql.name == "test-pipesor-dev-pg" && output.application_insights.workspace_id == output.container_platform.workspace_id
+    error_message = "Database and ACA must use distinct subnets while telemetry shares this environment's workspace."
+  }
+  assert {
+    condition     = output.service_bus.name == "test-pipesor-dev-bus" && output.foundry.account_name == "test-pipesor-dev-ai" && output.static_web_app.name == "test-pipesor-dev-web" && output.container_platform.environment_name == "caepipesordev"
+    error_message = "All approved foundations must coexist without losing environment identity."
+  }
+}

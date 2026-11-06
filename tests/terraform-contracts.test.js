@@ -39,7 +39,25 @@ function environmentEvents() {
   const foundry = { resource_changes: [resource('module.foundry[0].azapi_resource.account', account), resource('module.foundry[0].azapi_resource.project', project)], output_changes: { foundry: { after: { account_id: account.id, account_name: account.name, project_id: project.id, project_name: project.name, location: 'airegion', endpoint: 'synthetic' } } } };
   const web = { id: `${group}/providers/Microsoft.Web/staticSites/test-pipesor-qa-web`, parent_id: group, name: 'test-pipesor-qa-web', location: 'webregion', tags: { environment: 'qa' }, body: { sku: { name: 'Free', tier: 'Free' }, properties: { publicNetworkAccess: 'Enabled', enterpriseGradeCdnStatus: 'Disabled', stagingEnvironmentPolicy: 'Disabled', buildProperties: { skipGithubActionWorkflowGeneration: true } } }, output: { properties: { defaultHostname: 'synthetic.azurestaticapps.net' } } };
   const hosting = { resource_changes: [resource('module.static_web_app[0].azapi_resource.site', web)], output_changes: { static_web_app: { after: { id: web.id, name: web.name, location: 'webregion', default_hostname: 'synthetic.azurestaticapps.net' } } } };
-  return [...eventsFor('opt_in_static_web_app_contract', hosting), ...eventsFor('opt_in_foundry_contract', foundry), ...eventsFor('qa_root_contract', { resource_changes: [] }), ...eventsFor('opt_in_platform_contract', enabled), ...eventsFor('opt_in_postgresql_contract', databasePlan), ...eventsFor('opt_in_application_insights_contract', { resource_changes: [resource('module.container_platform[0].azapi_resource.workspace', workspace), resource('module.application_insights[0].azapi_resource.component', { parent_id: group, location: 'workloadregion', name: 'appipipesorqa', body: { properties: { WorkspaceResourceId: workspace.id, DisableLocalAuth: true } } })] }), summary];
+  const combined = structuredClone({ resource_changes: [...enabled.resource_changes, ...databasePlan.resource_changes.filter(change => change.address.startsWith('module.postgresql')), ...foundry.resource_changes, ...hosting.resource_changes], output_changes: { ...enabled.output_changes, ...foundry.output_changes, ...hosting.output_changes } });
+  const get = address => combined.resource_changes.find(change => change.address === address).change.after;
+  const pg = get(pgPrefix + 'server');
+  pg.id = `${group}/providers/Microsoft.DBforPostgreSQL/flexibleServers/test-pipesor-qa-pg`;
+  get(pgPrefix + 'subnet').id = `${network.id}/subnets/database`;
+  pg.body.properties.network = { delegatedSubnetResourceId: get(pgPrefix + 'subnet').id, privateDnsZoneArmResourceId: `${group}/providers/Microsoft.Network/privateDnsZones/fixture` };
+  pg.body.properties.authConfig.passwordAuth = 'Disabled';
+  get('module.container_platform[0].azapi_resource.workspace').body.properties.features = { disableLocalAuth: true };
+  combined.resource_changes.push(
+    resource(pgPrefix + 'dns', { id: pg.body.properties.network.privateDnsZoneArmResourceId }),
+    resource(pgPrefix + 'dns_link', { parent_id: pg.body.properties.network.privateDnsZoneArmResourceId, body: { properties: { virtualNetwork: { id: network.id } } } }),
+    resource('module.container_platform[0].azapi_resource.logs', { body: { properties: { workspaceId: workspace.id } } }),
+    resource('module.application_insights[0].azapi_resource.component', { id: `${group}/providers/Microsoft.Insights/components/appipipesorqa`, parent_id: group, location: 'workloadregion', body: { properties: { WorkspaceResourceId: workspace.id, DisableLocalAuth: true } } }),
+    resource('module.service_bus[0].azapi_resource.namespace', { id: `${group}/providers/Microsoft.ServiceBus/namespaces/fixture`, parent_id: group, location: 'messagingregion', body: { properties: { disableLocalAuth: true } } }),
+  );
+  combined.output_changes.postgresql = { after: { id: pg.id, subnet_id: get(pgPrefix + 'subnet').id, private_dns_zone_id: pg.body.properties.network.privateDnsZoneArmResourceId } };
+  combined.output_changes.application_insights = { after: { id: get('module.application_insights[0].azapi_resource.component').id, workspace_id: workspace.id } };
+  combined.output_changes.service_bus = { after: { id: get('module.service_bus[0].azapi_resource.namespace').id } };
+  return [...eventsFor('combined_foundations_contract', combined), ...eventsFor('opt_in_static_web_app_contract', hosting), ...eventsFor('opt_in_foundry_contract', foundry), ...eventsFor('qa_root_contract', { resource_changes: [] }), ...eventsFor('opt_in_platform_contract', enabled), ...eventsFor('opt_in_postgresql_contract', databasePlan), ...eventsFor('opt_in_application_insights_contract', { resource_changes: [resource('module.container_platform[0].azapi_resource.workspace', workspace), resource('module.application_insights[0].azapi_resource.component', { parent_id: group, location: 'workloadregion', name: 'appipipesorqa', body: { properties: { WorkspaceResourceId: workspace.id, DisableLocalAuth: true } } })] }), summary];
 }
 
 function bootstrapEvents(environment = 'prod', account = 'pipesorstatefixtureprod') {
@@ -57,7 +75,7 @@ function bootstrapEvents(environment = 'prod', account = 'pipesorstatefixturepro
 }
 
 function changedResource(events, suffix) {
-  return events.filter(event => event.type === 'test_plan').flatMap(event => event.test_plan.resource_changes).find(change => change.address.endsWith(suffix)).change.after;
+  return events.filter(event => event.type === 'test_plan' && event['@testrun'] !== 'combined_foundations_contract').flatMap(event => event.test_plan.resource_changes).find(change => change.address.endsWith(suffix)).change.after;
 }
 
 test('accepts valid caller plans with distinct IDs and unordered IP sets', () => {
@@ -163,4 +181,40 @@ test('rejects static hosting additions and wrong environment wiring', () => {
   const parent = environmentEvents();
   changedResource(parent, 'module.static_web_app[0].azapi_resource.site').parent_id = subscription;
   expect(() => checkCallerPlans('environments/qa', encode(parent))).toThrow('Static hosting caller resource group');
+});
+
+function combinedResource(events, address) {
+  return events.find(event => event.type === 'test_plan' && event['@testrun'] === 'combined_foundations_contract').test_plan.resource_changes.find(change => change.address === address).change.after;
+}
+
+test('rejects combined cross-environment parenting and shared dependency corruption', () => {
+  for (const [address, corrupt, message] of [
+    ['module.service_bus[0].azapi_resource.namespace', value => { value.parent_id = 'wrong-environment'; }, 'Combined foundation environment boundary'],
+    ['module.postgresql[0].azapi_resource.subnet', value => { value.parent_id = 'wrong-vnet'; }, 'Combined database VNet'],
+    ['module.application_insights[0].azapi_resource.component', value => { value.body.properties.WorkspaceResourceId = 'wrong-workspace'; }, 'Combined telemetry workspace'],
+    ['module.foundry[0].azapi_resource.account', value => { value.body.properties.disableLocalAuth = false; }, 'Combined Entra-only security'],
+    ['module.static_web_app[0].azapi_resource.site', value => { value.body.properties.repositoryToken = 'synthetic'; }, 'Combined static hosting security'],
+  ]) {
+    const events = environmentEvents();
+    corrupt(combinedResource(events, address));
+    expect(() => checkCallerPlans('environments/qa', encode(events))).toThrow(message);
+  }
+});
+
+test('requires the combined plan and checks its output identity independently', () => {
+  const events = environmentEvents();
+  expect(() => checkCallerPlans('environments/qa', encode(events.filter(event => event['@testrun'] !== 'combined_foundations_contract')))).toThrow('must complete successfully');
+  events.find(event => event.type === 'test_plan' && event['@testrun'] === 'combined_foundations_contract').test_plan.output_changes.postgresql.after.subnet_id = 'wrong-subnet';
+  expect(() => checkCallerPlans('environments/qa', encode(events))).toThrow('Combined output wiring');
+});
+
+test('rejects unapproved resources and region changes in the combined plan', () => {
+  for (const address of ['module.foundry[0].azapi_resource.model', 'azapi_resource.grant', 'module.container_platform[0].azapi_resource.extra_workspace']) {
+    const events = environmentEvents();
+    events.find(event => event.type === 'test_plan' && event['@testrun'] === 'combined_foundations_contract').test_plan.resource_changes.push(resource(address, {}));
+    expect(() => checkCallerPlans('environments/qa', encode(events))).toThrow('Combined scope contains only approved foundation resources');
+  }
+  const events = environmentEvents();
+  combinedResource(events, 'module.service_bus[0].azapi_resource.namespace').location = 'workloadregion';
+  expect(() => checkCallerPlans('environments/qa', encode(events))).toThrow('Combined explicit region forwarding');
 });
