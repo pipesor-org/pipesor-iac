@@ -1,0 +1,7 @@
+# Separately establish and authorize this backend; this file creates no state store.
+# Distinct container/access scope, not only a different state key.
+storage_account_name = "<approved-state-storage-account>"
+container_name       = "<dedicated-subscription-controls-container>"
+key                  = "subscription-controls/budget.tfstate"
+use_azuread_auth     = true
+# No keys/secrets; approved operator authentication supplies state access.

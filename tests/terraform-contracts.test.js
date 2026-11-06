@@ -14,6 +14,46 @@ const eventsFor = (run, plan) => [
 const summary = { type: 'test_summary', test_summary: { status: 'pass' } };
 const encode = events => events.map(event => JSON.stringify(event)).join('\n');
 
+function budgetEvents() {
+  const id = `${subscription}/providers/Microsoft.Consumption/budgets/pipesor-monthly`;
+  return [...eventsFor('budget_absent', { resource_changes: [] }), ...eventsFor('budget_contract', {
+    resource_changes: [resource('azapi_resource.budget[0]', {
+      id, name: 'pipesor-monthly', parent_id: subscription, type: 'Microsoft.Consumption/budgets@2024-08-01',
+      body: { properties: {
+        amount: 300, category: 'Cost', timeGrain: 'Monthly',
+        timePeriod: { startDate: '2026-11-01T00:00:00Z', endDate: '2027-11-01T00:00:00Z' },
+        notifications: Object.fromEntries([['actual_50',50,'Actual'],['actual_80',80,'Actual'],['actual_100',100,'Actual'],['forecast_100',100,'Forecasted']].map(([key,threshold,thresholdType]) => [key, {
+          enabled: true, operator: 'GreaterThanOrEqualTo', threshold, thresholdType,
+          contactEmails: ['FinOps+alerts@example.com', 'operators@example.com'], contactGroups: [], contactRoles: [],
+        }])),
+      } },
+    })], output_changes: { budget: { after: { id, name: 'pipesor-monthly' } } },
+  }), summary];
+}
+
+test('accepts subscription budget and rejects cost, scope, filter and automation regressions', () => {
+  checkCallerPlans('subscription-controls', encode(budgetEvents()));
+  for (const mutate of [
+    value => { value.parent_id += '/resourceGroups/wrong-scope'; },
+    value => { value.body.properties.amount = 1200; },
+    value => { value.body.properties.filter = { tags: { name: 'environment', values: ['dev'] } }; },
+    value => { value.body.properties.timeGrain = 'BillingMonth'; },
+    value => { value.body.properties.notifications.actual_50.contactGroups = ['synthetic-action-group']; },
+    value => { value.body.properties.notifications.forecast_100.thresholdType = 'Actual'; },
+  ]) {
+    const events = budgetEvents();
+    mutate(events.find(event => event.type === 'test_plan' && event['@testrun'] === 'budget_contract').test_plan.resource_changes[0].change.after);
+    expect(() => checkCallerPlans('subscription-controls', encode(events))).toThrow();
+  }
+});
+
+test('rejects extra subscription controls and missing budget plans', () => {
+  const events = budgetEvents();
+  events.find(event => event.type === 'test_plan' && event['@testrun'] === 'budget_contract').test_plan.resource_changes.push(resource('azapi_resource.extra', {}));
+  expect(() => checkCallerPlans('subscription-controls', encode(events))).toThrow('Only one subscription budget');
+  expect(() => checkCallerPlans('subscription-controls', encode(budgetEvents().filter(event => event['@testrun'] !== 'budget_contract')))).toThrow('must complete successfully');
+});
+
 function environmentEvents() {
   const group = `${subscription}/resourceGroups/rg-pipesor-qa`;
   const network = { id: `${group}/providers/Microsoft.Network/virtualNetworks/network`, parent_id: group, location: 'workloadregion', body: { properties: { addressSpace: { addressPrefixes: ['10.50.0.0/16'] } } } };

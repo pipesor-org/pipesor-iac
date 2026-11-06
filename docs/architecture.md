@@ -19,6 +19,7 @@ Create directories only when they contain a real implementation:
 | --- | --- |
 | `environments/<environment>/` | One initial root for each environment defined in ADR 001, with provider configuration, backend declaration, inputs and dependency lock file. |
 | `modules/<capability>/` | Reusable composition with a meaningful shared contract; no environment values, backend or provider credentials. |
+| `subscription-controls/` | Separate root/state owning the approved subscription-wide cost notifications, outside workload environment states. |
 | `<root>/tests/*.tftest.hcl` | Plan-only or fully mocked contract tests for that root/module. |
 | `docs/` | Infrastructure decisions and their rationale. |
 | `.codex/` | Repository-local coordinator settings and specialist agent definitions. |
@@ -195,3 +196,12 @@ independently of ACA. Only identity and default hostname are exported. No conten
 authentication, domain binding, repository integration or delivery workflow is
 created. Entra application authentication and ACA API authorization remain required
 before real operational use; public assets must contain no sensitive data/secrets.
+
+## Subscription cost notifications
+
+The [subscription controls](subscription-controls.md) define one optional unfiltered
+300 USD calendar-month budget for the confirmed dedicated USD subscription.
+Actual 50/80/100 and forecast 100 percent notifications are email-only. The separate
+root/state creates no automation and does not cap spending. Explicit dates,
+recipients and backend custody remain reviewed deployment inputs; all Azure/state
+operations retain existing human approval gates.
