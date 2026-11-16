@@ -98,8 +98,8 @@ approval gates remain. No registration, DNS, Azure or Worker writes were perform
 Retain the previous dated hosting estimate ($0 within Free quotas or $9 per
 Standard app/month, illustrative East US 2). Custom domains/managed certificates
 do not themselves force Standard. Domain registration, Workers/DNS usage, GitHub,
-email and optional docs costs are separate unknowns. No complete $300/month budget
-fit, live TLS, corporate compliance or end-to-end authentication is established.
+email and optional docs costs are separate unknowns. A complete current MVP cost estimate,
+live TLS, corporate compliance and end-to-end authentication remain unverified.
 
 ## Focused verification sources
 

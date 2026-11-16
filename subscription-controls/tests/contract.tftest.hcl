@@ -13,6 +13,7 @@ run "budget_contract" {
   command = plan
   variables {
     budget = {
+      amount         = 123.45
       name           = "pipesor-monthly"
       start_date     = "2026-11-01"
       end_date       = "2027-11-01"
@@ -29,8 +30,8 @@ run "budget_contract" {
     error_message = "Budget belongs to the subscription, not an environment resource group or region."
   }
   assert {
-    condition     = azapi_resource.budget[0].body.properties.amount == 300 && azapi_resource.budget[0].body.properties.category == "Cost" && azapi_resource.budget[0].body.properties.timeGrain == "Monthly" && length(keys(azapi_resource.budget[0].body.properties)) == 5
-    error_message = "Track an unfiltered calendar-month 300 cost budget without filters or other controls."
+    condition     = azapi_resource.budget[0].body.properties.amount == 123.45 && azapi_resource.budget[0].body.properties.category == "Cost" && azapi_resource.budget[0].body.properties.timeGrain == "Monthly" && length(keys(azapi_resource.budget[0].body.properties)) == 5
+    error_message = "Track an unfiltered calendar-month cost budget with the explicit synthetic amount without filters or other controls."
   }
   assert {
     condition     = azapi_resource.budget[0].body.properties.timePeriod == { startDate = "2026-11-01T00:00:00Z", endDate = "2027-11-01T00:00:00Z" } && length(azapi_resource.budget[0].body.properties.notifications) == 4
@@ -47,7 +48,9 @@ run "budget_contract" {
 }
 run "reject_name_null" {
   command = plan
-  variables { budget = { name = null
+  variables { budget = {
+    amount     = 123.45
+    name       = null
     start_date = "2026-11-01"
     end_date   = "2027-11-01"
   contact_emails = ["operators@example.com"] } }
@@ -55,7 +58,9 @@ run "reject_name_null" {
 }
 run "reject_name_invalid" {
   command = plan
-  variables { budget = { name = "bad/name"
+  variables { budget = {
+    amount     = 123.45
+    name       = "bad/name"
     start_date = "2026-11-01"
     end_date   = "2027-11-01"
   contact_emails = ["operators@example.com"] } }
@@ -63,7 +68,9 @@ run "reject_name_invalid" {
 }
 run "reject_start_null" {
   command = plan
-  variables { budget = { name = "pipesor-monthly"
+  variables { budget = {
+    amount     = 123.45
+    name       = "pipesor-monthly"
     start_date = null
     end_date   = "2027-11-01"
   contact_emails = ["operators@example.com"] } }
@@ -71,7 +78,9 @@ run "reject_start_null" {
 }
 run "reject_start_not_first" {
   command = plan
-  variables { budget = { name = "pipesor-monthly"
+  variables { budget = {
+    amount     = 123.45
+    name       = "pipesor-monthly"
     start_date = "2026-11-02"
     end_date   = "2027-11-01"
   contact_emails = ["operators@example.com"] } }
@@ -79,7 +88,9 @@ run "reject_start_not_first" {
 }
 run "reject_start_invalid" {
   command = plan
-  variables { budget = { name = "pipesor-monthly"
+  variables { budget = {
+    amount     = 123.45
+    name       = "pipesor-monthly"
     start_date = "2026-13-01"
     end_date   = "2027-11-01"
   contact_emails = ["operators@example.com"] } }
@@ -87,7 +98,9 @@ run "reject_start_invalid" {
 }
 run "reject_end_invalid" {
   command = plan
-  variables { budget = { name = "pipesor-monthly"
+  variables { budget = {
+    amount     = 123.45
+    name       = "pipesor-monthly"
     start_date = "2026-11-01"
     end_date   = "2027-02-30"
   contact_emails = ["operators@example.com"] } }
@@ -95,7 +108,9 @@ run "reject_end_invalid" {
 }
 run "reject_end_null" {
   command = plan
-  variables { budget = { name = "pipesor-monthly"
+  variables { budget = {
+    amount     = 123.45
+    name       = "pipesor-monthly"
     start_date = "2026-11-01"
     end_date   = null
   contact_emails = ["operators@example.com"] } }
@@ -103,7 +118,9 @@ run "reject_end_null" {
 }
 run "reject_end_before" {
   command = plan
-  variables { budget = { name = "pipesor-monthly"
+  variables { budget = {
+    amount     = 123.45
+    name       = "pipesor-monthly"
     start_date = "2026-11-01"
     end_date   = "2026-10-01"
   contact_emails = ["operators@example.com"] } }
@@ -111,7 +128,9 @@ run "reject_end_before" {
 }
 run "reject_end_equal" {
   command = plan
-  variables { budget = { name = "pipesor-monthly"
+  variables { budget = {
+    amount     = 123.45
+    name       = "pipesor-monthly"
     start_date = "2026-11-01"
     end_date   = "2026-11-01"
   contact_emails = ["operators@example.com"] } }
@@ -119,7 +138,9 @@ run "reject_end_equal" {
 }
 run "reject_emails_empty" {
   command = plan
-  variables { budget = { name = "pipesor-monthly"
+  variables { budget = {
+    amount     = 123.45
+    name       = "pipesor-monthly"
     start_date = "2026-11-01"
     end_date   = "2027-11-01"
   contact_emails = [] } }
@@ -127,7 +148,9 @@ run "reject_emails_empty" {
 }
 run "reject_emails_null" {
   command = plan
-  variables { budget = { name = "pipesor-monthly"
+  variables { budget = {
+    amount     = 123.45
+    name       = "pipesor-monthly"
     start_date = "2026-11-01"
     end_date   = "2027-11-01"
   contact_emails = null } }
@@ -135,7 +158,9 @@ run "reject_emails_null" {
 }
 run "reject_email_invalid" {
   command = plan
-  variables { budget = { name = "pipesor-monthly"
+  variables { budget = {
+    amount     = 123.45
+    name       = "pipesor-monthly"
     start_date = "2026-11-01"
     end_date   = "2027-11-01"
   contact_emails = ["bad-address"] } }
@@ -143,7 +168,9 @@ run "reject_email_invalid" {
 }
 run "reject_email_null" {
   command = plan
-  variables { budget = { name = "pipesor-monthly"
+  variables { budget = {
+    amount     = 123.45
+    name       = "pipesor-monthly"
     start_date = "2026-11-01"
     end_date   = "2027-11-01"
   contact_emails = [null] } }
@@ -151,7 +178,9 @@ run "reject_email_null" {
 }
 run "reject_email_whitespace" {
   command = plan
-  variables { budget = { name = "pipesor-monthly"
+  variables { budget = {
+    amount     = 123.45
+    name       = "pipesor-monthly"
     start_date = "2026-11-01"
     end_date   = "2027-11-01"
   contact_emails = [" bad@example.com"] } }
@@ -159,7 +188,9 @@ run "reject_email_whitespace" {
 }
 run "reject_emails_too_many" {
   command = plan
-  variables { budget = { name = "pipesor-monthly"
+  variables { budget = {
+    amount     = 123.45
+    name       = "pipesor-monthly"
     start_date = "2026-11-01"
     end_date   = "2027-11-01"
   contact_emails = ["a@example.com", "b@example.com", "c@example.com", "d@example.com", "e@example.com", "f@example.com"] } }
@@ -169,4 +200,73 @@ run "reject_subscription" {
   command = plan
   variables { subscription_id = "not-a-uuid" }
   expect_failures = [var.subscription_id]
+}
+
+run "reject_amount_null" {
+  command = plan
+  variables {
+    budget = {
+      amount         = null
+      name           = "pipesor-monthly"
+      start_date     = "2026-11-01"
+      end_date       = "2027-11-01"
+      contact_emails = ["operators@example.com"]
+    }
+  }
+  expect_failures = [var.budget]
+}
+
+run "reject_amount_zero" {
+  command = plan
+  variables {
+    budget = {
+      amount         = 0
+      name           = "pipesor-monthly"
+      start_date     = "2026-11-01"
+      end_date       = "2027-11-01"
+      contact_emails = ["operators@example.com"]
+    }
+  }
+  expect_failures = [var.budget]
+}
+
+run "reject_amount_negative" {
+  command = plan
+  variables {
+    budget = {
+      amount         = -1
+      name           = "pipesor-monthly"
+      start_date     = "2026-11-01"
+      end_date       = "2027-11-01"
+      contact_emails = ["operators@example.com"]
+    }
+  }
+  expect_failures = [var.budget]
+}
+
+run "reject_amount_infinite" {
+  command = plan
+  variables {
+    budget = {
+      amount         = 1 / 0
+      name           = "pipesor-monthly"
+      start_date     = "2026-11-01"
+      end_date       = "2027-11-01"
+      contact_emails = ["operators@example.com"]
+    }
+  }
+  expect_failures = [var.budget]
+}
+
+run "reject_amount_missing" {
+  command = plan
+  variables {
+    budget = {
+      name           = "pipesor-monthly"
+      start_date     = "2026-11-01"
+      end_date       = "2027-11-01"
+      contact_emails = ["operators@example.com"]
+    }
+  }
+  expect_failures = [var.budget]
 }

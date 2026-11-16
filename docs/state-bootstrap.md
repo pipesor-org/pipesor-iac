@@ -9,14 +9,19 @@ Workload groups and their existing roots remain separate. Account names are
 explicit inputs because they are globally unique; names are never reservations.
 Choose distinct names and identities for all four environments when commissioned.
 
-`bootstrap/admin` separately owns `rg-pipesor-state-admin`, its own account and
-`tfstate-admin` container for `subscription-controls/budget.tfstate`. It is an
-administrative state scope, not a fifth workload environment; its initial local
-bootstrap state must remain independently recoverable. The root exports backend
-settings without modifying or initializing `subscription-controls`.
+[ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md) selects only
+`bootstrap/dev` for the MVP; do not provision the other environment stores.
+`bootstrap/admin` is deferred outside MVP scope. Its only present responsibility
+is the backend for the deferred `subscription-controls` root: separate
+`rg-pipesor-state-admin`, account and `tfstate-admin` container with key
+`subscription-controls/budget.tfstate`. It is not a DEV prerequisite. Preserve its
+addresses and independent bootstrap-state custody pending a reviewed deployment
+inventory; absence of local state does not establish absence of remote deployment.
+Do not delete the root, set deployed inputs to null, destroy resources or migrate
+its controls into DEV state as a consequence of this scope decision.
 
-[ADR 004](adr-004-mvp-state-and-deployment.md) selects only dev and administrative
-state accounts for the eventual academic MVP; do not provision the other three.
+[ADR 004](adr-004-mvp-state-and-deployment.md) otherwise retains the custody and
+readiness gates.
 All provisioning waits for implemented, locally integrated and validated services
 and explicit target/action authorization. WSL Azure CLI is acceptable for Jhon's
 bootstrap/preparation; Actions OIDC on the proposed dedicated Debian VirtualBox
@@ -34,7 +39,7 @@ are created. The bootstrap operator separately needs resource creation and role
 assignment permissions; workload state users need neither management privilege.
 
 Blob versioning and blob/container soft deletion protect previous state versions
-and deleted data. MVP dev/admin examples now explicitly select LRS and 30-day
+and deleted data. The DEV MVP example explicitly selects LRS and 30-day
 blob/container soft deletion. Reusable modules still require explicit values;
 production redundancy remains deferred. These choices are independent of the
 application's 365-day evidence policy. Soft-delete days do not expire old blob
@@ -43,13 +48,14 @@ cost and require later reviewed maintenance.
 
 ## Inputs still required
 
-Dev/admin examples include the owner-verified temporary subscription and tenant
-from ADR 004 plus the agreed LRS/30-day choices. They remain nondeployable examples,
+The DEV example includes the owner-supplied temporary subscription and tenant
+from ADR 004 plus the agreed LRS/30-day choices. Deferred admin examples use generic
+target placeholders; they do not select the institutional subscription. They remain nondeployable examples,
 not default inputs or evidence of Jhon's access. Other environments retain generic
 placeholders. Before creating any ignored local variable file, review:
 
 - Active target context, pending region and globally available account names.
-- Actual offer/region support and complete costs for dev plus administrative state.
+- Actual offer/region support and complete costs for DEV workload and its state store; no admin store is required.
 - Pending Entra principal object IDs and exact approved role scopes; institutional
   email ownership is not an access grant or a principal identifier.
 - Pending approved public egress IPs/ranges and the execution network. Jhon's WSL
@@ -58,7 +64,7 @@ placeholders. Before creating any ignored local variable file, review:
   procedure. Independent encrypted backup retention is now an initial 90 days;
   the backend's separate 30-day soft deletion remains unchanged.
 
-Review all four configurations together. Input validation within one root cannot
+Before commissioning a future environment, review its configuration against the existing ones. Subscription IDs remain explicit per root; distinct subscriptions can share an Entra tenant. Input validation within one root cannot
 prove that a nonproduction principal has not also been granted production access.
 Subscription/RG Owners and other privileged control-plane operators remain able to
 change storage/RBAC configuration; container RBAC does not constrain those admins.
@@ -119,6 +125,35 @@ version must reconcile actual Azure resources and Terraform lineage/serial; copy
 an old state version is not an automatic rollback. Deleting the account/group can
 remove all versions and soft-deleted data. Recovery features do not prevent a
 privileged account deletion; deletion controls require an operational decision.
+
+## Resource-provider preparation
+
+AzAPI **2.9.0** keeps `skip_provider_registration = true` and preflight disabled.
+`Microsoft.Storage` must be registered in the selected subscription before storage
+bootstrap. Registration changes the subscription and is a separately authorized
+preparation operation, not a Terraform resource or another state/root.
+
+During a later approved read-only readiness check, use an authenticated context
+with no resource-write permissions and compare its tenant/subscription to the
+reviewed DEV inputs. These commands are documentation only and do not register anything:
+
+```sh
+az account show --subscription "$SUBSCRIPTION_ID" --query '{subscription:id,tenant:tenantId,state:state}'
+az provider show --subscription "$SUBSCRIPTION_ID" --namespace Microsoft.Storage --query '{namespace:namespace,state:registrationState}'
+```
+
+Require the intended tenant/subscription, an enabled subscription and registration
+state `Registered`. If absent, inaccessible or still registering, stop bootstrap.
+Obtain explicit human authorization naming the subscription and registration action
+before a privileged operator performs registration outside Terraform. Re-run the
+read-only check afterwards and record non-sensitive evidence of `Registered`;
+registration alone does not establish storage eligibility, RBAC or backend access.
+Other selected workload providers need the same preparation review before real use.
+Never enable implicit registration to bypass this boundary.
+
+Sources: [AzAPI 2.9.0 provider settings](https://github.com/Azure/terraform-provider-azapi/blob/v2.9.0/docs/index.md),
+[Azure resource-provider registration](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types),
+[Azure CLI provider show](https://learn.microsoft.com/en-us/cli/azure/provider#az-provider-show).
 
 ## Local verification and test boundaries
 

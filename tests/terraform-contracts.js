@@ -41,13 +41,13 @@ export function checkCallerPlans(directory, stdout) {
     assert.equal(budget.type, 'Microsoft.Consumption/budgets@2024-08-01', 'Budget API version');
     assert.ok(budget.location == null || budget.location === '', 'Subscription budget has no region');
     assert.deepEqual(budget.body, { properties: {
-      amount: 300, category: 'Cost', timeGrain: 'Monthly',
+      amount: 123.45, category: 'Cost', timeGrain: 'Monthly',
       timePeriod: { startDate: '2026-11-01T00:00:00Z', endDate: '2027-11-01T00:00:00Z' },
       notifications: Object.fromEntries([['actual_50',50,'Actual'],['actual_80',80,'Actual'],['actual_100',100,'Actual'],['forecast_100',100,'Forecasted']].map(([key,threshold,thresholdType]) => [key, {
         enabled: true, operator: 'GreaterThanOrEqualTo', threshold, thresholdType,
         contactEmails: ['FinOps+alerts@example.com', 'operators@example.com'], contactGroups: [], contactRoles: [],
       }])),
-    } }, 'Approved unfiltered budget and email-only notification contract');
+    } }, 'Explicit synthetic budget amount and email-only notification contract');
     assert.deepEqual(enabled.output_changes.budget.after, { id: budget.id, name: 'pipesor-monthly' }, 'Budget exports identity only');
   } else if (kind === 'environments') {
     const baseline = plan(`${environment}_root_contract`);

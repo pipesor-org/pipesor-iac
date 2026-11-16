@@ -2,13 +2,13 @@
 
 This foundation defines one resource group in each of four Terraform roots and an
 optional shared MVP container platform, Service Bus namespace, PostgreSQL server,
-Application Insights component, Microsoft Foundry account/project and Static Web Apps Free site per environment; it is not an Azure landing zone. No resources or remote backends have been deployed.
+Application Insights component, Microsoft Foundry account/project and Static Web Apps Free site per environment; it is not an Azure landing zone. Historical records report no deployment; actual Azure/remote-state inventory remains unverified.
 The academic MVP selects only `dev` in Ramiro's temporary Azure for Students
 subscription/UPC tenant; [ADR 004](adr-004-mvp-state-and-deployment.md) records the
 verified target, custody and deployment gates. No infrastructure may be deployed
 until application services are implemented, integrated locally and validated,
 followed by explicit deployment authorization. Other environments remain unprovisioned.
-Subscriptions remain explicit inputs; metadata locations are pending.
+[ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md) selects one tenant and one temporary Students subscription for DEV. Each environment retains its explicit subscription input and can later use a different subscription without shared-module redesign. Separate tenants are a future governance choice. Metadata locations are pending.
 Workload regions and network allocations require explicit inputs. Service capacity,
 identity configuration and delivery contracts remain undecided. The Azure service selections and their limits are
 recorded in [architecture consumption](architecture-consumption.md). No cloud CI
@@ -24,7 +24,7 @@ Create directories only when they contain a real implementation:
 | --- | --- |
 | `environments/<environment>/` | One initial root for each environment defined in ADR 001, with provider configuration, backend declaration, inputs and dependency lock file. |
 | `modules/<capability>/` | Reusable composition with a meaningful shared contract; no environment values, backend or provider credentials. |
-| `subscription-controls/` | Separate root/state owning the approved subscription-wide cost notifications, outside workload environment states. |
+| `subscription-controls/` | Deferred root/state for subscription cost notifications, outside the active MVP and workload states; no approved current amount. |
 | `<root>/tests/*.tftest.hcl` | Plan-only or fully mocked contract tests for that root/module. |
 | `docs/` | Infrastructure decisions and their rationale. |
 | `.codex/` | Repository-local coordinator settings and specialist agent definitions. |
@@ -51,7 +51,8 @@ and preparation; avoid storage keys and long-lived client secrets. Separate prod
 nonproduction. State can contain secrets even when outputs are marked sensitive.
 Backend bootstrap is a separately authorized task, outside the workload state it
 will host. [State bootstrap](state-bootstrap.md) defines the separate configuration and custody
-contract; no backend has been created or migrated.
+contract; credential-free checks neither initialize a remote backend nor establish
+actual deployment inventory.
 See HashiCorp's [Azure backend reference](https://developer.hashicorp.com/terraform/language/backend/azurerm).
 
 ## Terraform and naming
@@ -136,11 +137,13 @@ placed into it later. No existing resources are imported or adopted by this code
 
 ## State bootstrap
 
-`modules/state-store`, four `bootstrap/<environment>` callers and a separate
-`bootstrap/admin` caller implement the prerequisite described in
-[state bootstrap](state-bootstrap.md). Only dev and administrative state accounts
-are selected for the eventual MVP. The administrative account/container serves
-`subscription-controls`; its own bootstrap state retains independent local custody.
+`modules/state-store` and `bootstrap/dev` implement the active remote-state
+prerequisite described in [state bootstrap](state-bootstrap.md). Only the DEV
+state account is selected for the MVP. The other environment bootstrap roots
+retain future isolation contracts. `bootstrap/admin` serves only the deferred
+`subscription-controls` state and is outside active MVP scope. Its definitions,
+addresses and independent bootstrap custody contract are retained until an
+explicitly reviewed inventory establishes whether retirement is safe.
 The user selected a public endpoint restricted to approved operator IPs; the
 configuration denies other networks and grants explicit container-scoped Entra
 access. MVP examples explicitly select LRS and 30-day soft deletion with versioning;
@@ -209,16 +212,13 @@ authentication, domain binding, repository integration or delivery workflow is
 created. Entra application authentication and ACA API authorization remain required
 before real operational use; public assets must contain no sensitive data/secrets.
 
-## Subscription cost notifications
+## Cost governance
 
-The [subscription controls](subscription-controls.md) define one optional unfiltered
-300 calendar-month budget under the earlier dedicated-subscription/USD decision.
-The amount and notification policy remain unchanged; offer eligibility, currency
-and scope must be revalidated for ADR 004's temporary Students subscription.
-Actual 50/80/100 and forecast 100 percent notifications are email-only. The separate
-root/state creates no automation and does not cap spending. Explicit dates,
-recipients, backend wiring and permissions remain reviewed deployment inputs.
-ADR 004 names Jhon/Ramiro as primary/backup custodians and selects encrypted state
-backups with 90-day retention. Custody paths, keys and restore verification remain
-pending. All Azure/state operations retain human approval
-gates; the subscription-controls root remains under its existing orchestrator.
+[ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md) replaces the old
+USD 300/dedicated-subscription assumption. Use native offer-supported usage and
+credit visibility, a complete DEV estimate and resource-group attribution first.
+[Cost governance](subscription-controls.md) documents feature-eligibility limits,
+existing environment tags and future independent-subscription governance.
+`subscription-controls` and its admin backend are deferred; neither is a DEV
+prerequisite. No control is moved into workload state and no new state boundary
+is introduced. Budgets are notifications, not hard spending limits.

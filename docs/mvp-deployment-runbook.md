@@ -4,7 +4,9 @@
 The [workflow scaffold](../.github/workflow-templates/terraform-dev.yml.example)
 is deliberately inactive and stops before cloud access. Do not register a runner,
 create federation, enable workflows, connect state or apply Terraform under this
-local-preparation task. `subscription-controls/**` remains with its current owner.
+local-preparation task. [ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md)
+selects only DEV and its state store; administrative bootstrap and subscription
+controls are deferred and are not activation prerequisites.
 
 ## Acceptance checks before activation
 
@@ -21,7 +23,8 @@ VM specification is an input, not proof that these checks passed.
 | Network | DNS/TLS and outbound HTTPS reach GitHub/Actions, module/provider sources, Azure login/management and the intended Blob hostname; actual guest public egress matches approved storage rules. Revalidate if the operator's public IP changes. |
 | Backend | Later authorized checks establish account/container separation, Entra access, lease locking and recovery. HTTP reachability alone does not verify those controls. |
 | Recovery | Jhon and Ramiro independently decrypt a representative encrypted copy using their own keys, verify its digest and can access key recovery material. Store encrypted copies in all agreed destinations and inventory their 90-day expiry. |
-| Costs and configuration | Actual Students offer/region/SKU/quota/currency checks, complete dev estimate, backend names, principals, IPs and nonsecret input references reviewed; no placeholder accepted as an actual deployment value. |
+| Costs and configuration | Actual Students offer, available credit/expiry, feature support, region/SKU/quota/currency checks, complete DEV estimate including its state store, native usage-review owner/cadence, backend names, principals, IPs and nonsecret inputs reviewed; no placeholder or old USD 300 threshold accepted. |
+| Provider registration | Verify the target context and `Microsoft.Storage` registration using the [state-bootstrap procedure](state-bootstrap.md#resource-provider-preparation). Registration requires separate target/action authorization; keep automatic registration disabled. |
 
 Inside the verified guest, basic read-only diagnostics include `cat
 /etc/os-release`, `uname -m`, `nproc`, `free -h` and `df -h`. They reveal capacity,

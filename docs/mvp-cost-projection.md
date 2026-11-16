@@ -5,17 +5,28 @@ Reviewed 2026-11-06 against IaC
 increment. This reconciles the supplied estimate with official pricing; it is
 not measured spending, a deployment approval or a complete operating forecast.
 
-## Basis and selected scope
+## Current applicability
 
-Use the owner-confirmed **single dedicated Pipesor subscription with USD billing**
-as the planning layout. East US is illustrative, not a selected deployment region.
+[ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md) supersedes the
+single dedicated USD/PAYG subscription and USD 300 target used in this dated
+estimate. Current scope is DEV only in a temporary Azure for Students subscription;
+QA, preprod and prod remain unprovisioned. Actual offer, currency, available credit,
+expiry and a complete DEV estimate must be verified before authorization. The old
+rates below are historical sensitivity inputs, not refreshed prices, current
+entitlements or an approved operating budget. Administrative bootstrap and Terraform
+subscription controls are deferred; DEV state storage remains required.
+
+## Historical basis (2026-11-06)
+
+The earlier record used a **single dedicated Pipesor subscription with USD billing**
+as its planning assumption. East US is illustrative, not a selected deployment region.
 Assume PAYG, 730 deployed hours/month, before taxes, discounts and credits, with no
 application traffic or billable telemetry. Subscription settings were not inspected.
 
 Checked-in workload defaults enable only resource groups: their projected resource
 cost is $0/environment/month. This does not prove the Azure subscription has zero
-spending. Optional foundations, state bootstrap and the budget remain opt-in; no
-Azure resources or backends have been deployed through this workflow.
+spending. Optional foundations, state bootstrap and the budget were opt-in; the historical workflow reported no
+Azure resources or backends deployed. Actual deployment inventory remains unverified.
 
 | Foundation component | Planning rate / monthly amount |
 | --- | --- |
@@ -39,23 +50,24 @@ assumes the managed LB has billable rules throughout the month.** A Standard LB
 with zero rules has no hourly charge. Inspect managed resources and cost meters
 after authorized deployment; management traffic can add data-processing costs.
 
-## Concurrent environment scenarios
+## Historical concurrent-environment sensitivity
 
 The illustrative per-stack subtotal excluding the shared Service Bus base is
 `25.55 + 49.64 + 3.68 + 0.50 = $79.37/month`.
 
-| Fully enabled concurrent stacks | Partial fixed projection, rounded | Unallocated portion of $300, before omitted costs |
-| --- | ---: | ---: |
-| 1 | About $89 | About $211 |
-| 2 | About $169 | About $131 |
-| 3 | About $248 | About $52 |
-| 4 | About $327 | About −$27 |
+| Fully enabled concurrent stacks in one subscription | Historical partial fixed projection, rounded |
+| --- | ---: |
+| 1 | About $89 |
+| 2 | About $169 |
+| 3 | About $248 |
+| 4 | About $327 |
 
 Using the supplied rounded meters, exact arithmetic gives $89.37, $168.74,
 $248.11 and $327.48 respectively. Allocating the shared base equally among four
 stacks gives $81.87 each; that is accounting allocation, not namespace pricing.
-The four-subscription $357.48 example is a sensitivity case, **not the selected
-layout**. Neither scenario supplies a complete application cost estimate.
+The four-subscription $357.48 example is another historical sensitivity case.
+Future independent subscriptions require separate estimates and funding decisions;
+no multi-environment provisioning layout is selected for the current MVP. Neither scenario supplies a complete application cost estimate.
 
 State-account replication, stored versions/recovery and transactions are excluded,
 as are ACA applications, requests, model/embedding usage, telemetry, DNS queries,
@@ -65,12 +77,12 @@ usage. Domain, GitHub and other non-Azure charges are outside this budget scope.
 
 ## Budget implications
 
-Keep the approved **$300 monthly budget and notification policy unchanged**.
-The estimate informs deployment sequencing, not an automatic target increase.
-Four isolated roots/states do not require four continuously funded stacks. Start
-with dev; establish cost capacity for later environments as promotion requires
-them, without skipping promotion gates or sharing environment states. Concurrent
-stack counts remain planning scenarios, not an approved environment schedule.
+No current numerical spending threshold is approved by this projection. Use the
+[native cost-governance procedure](subscription-controls.md), actual offer-supported
+balance/usage views and a newly reviewed complete DEV estimate. Any future budget
+amount requires explicit owner review in the verified billing currency. Four roots
+preserve isolation and future promotion, not a requirement to fund four concurrent
+stacks. Future environments require independent funding and deployment authorization.
 
 Do not set an opt-in configuration to null as a stop mechanism: it proposes
 deletion. PostgreSQL stop/start is only a future operational option requiring

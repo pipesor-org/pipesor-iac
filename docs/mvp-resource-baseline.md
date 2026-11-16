@@ -51,19 +51,17 @@ The separate Azure Blob backend for Terraform state remains in scope.
 
 ## Decisions still required for the affected resources
 
-The [dated cost projection](mvp-cost-projection.md) separates checked-in defaults
-from enabled-foundation scenarios and omitted workload/state costs. It preserves
-the $300 planning target; its earlier dedicated-subscription/PAYG assumptions
-require reconciliation with ADR 004's temporary Students target before deployment.
+[ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md) supersedes the
+USD 300/dedicated-subscription assumption. The [dated cost projection](mvp-cost-projection.md)
+is historical PAYG sensitivity analysis, not a Students forecast or approved
+threshold. A complete DEV estimate must include its state store and actual model,
+telemetry, runtime and network usage before authorization.
 
-The earlier [subscription cost-notification decision](subscription-controls.md)
-approved one 300 USD monthly budget under dedicated-subscription/USD assumptions,
-in its own root/state, with email-only Actual 50/80/100 and Forecasted 100 alerts. It does
-not allocate 300 to each environment or stop spending. Dates and recipients remain
-deployment inputs. ADR 004 now fixes state custody; offer eligibility, actual
-currency and scope must be rechecked for the temporary subscription with the
-subscription-controls owner. That root remains under the other orchestrator's
-ownership.
+[Cost governance](subscription-controls.md) starts with native offer-supported
+credit/usage visibility and DEV resource-group attribution. Terraform subscription
+budgets and `bootstrap/admin` are deferred outside the MVP; their contracts remain
+for existing-state recovery and future review. No current budget amount or billing
+currency is approved by the old implementation.
 
 The [increment priorities](infrastructure-priorities.md) distinguish independent
 local verification work from resource increments blocked on accepted contracts.
@@ -430,8 +428,8 @@ Public/private network placement does not select inference processing geography.
 Do not promise zero data retention; review provider abuse monitoring and any
 stateful API before real evidence use. Public access is approved for the MVP;
 private networking must be reassessed if mandatory policy or data classification
-requires it. The whole-solution planning budget is $300/month excluding credits;
-exact model usage/rates and the complete cost forecast remain unverified. Budgets
+requires it. No current whole-solution monetary threshold is selected;
+actual offer/currency, model usage/rates and the complete DEV forecast remain unverified. Budgets
 and alerts are not hard spend caps. Four roots do not require four active accounts.
 Canonical architecture reconciliation remains separate in `pipesor-docs`.
 
@@ -460,7 +458,7 @@ covers the module; this does not deploy an application or grant CI Azure access.
 Standard remains a future reviewed upgrade if platform-enforced tenant-specific
 authentication, SLA, networking requirements or quotas justify it. No SKU selector
 is added before that decision. Free quotas and lack of SLA are accepted limitations;
-a free hosting tier is not proof the complete solution fits the $300/month budget.
+a free hosting tier is not proof the complete solution fits the verified academic funding envelope.
 
 Preserve the [domain reconciliation](domain-hosting-reconciliation.md): routing,
 public runtime configuration for immutable builds, Entra registration/scopes and

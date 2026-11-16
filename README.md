@@ -16,11 +16,14 @@ Terraform foundation for Pipesor's planned Microsoft Azure infrastructure, with 
 
 - [Service Bus foundation](docs/mvp-resource-baseline.md#shared-messaging-foundation) is opt-in per environment: one public, Entra-only Standard namespace. Messaging entities and service grants remain deferred.
 - [MVP container platform](docs/mvp-resource-baseline.md) is opt-in per environment: a shared Consumption environment, VNet/delegated subnet and monitoring workspace. No service applications are defined.
-- [State bootstrap](docs/state-bootstrap.md) defines isolated environment state accounts and a separate administrative account/container for subscription controls, using explicit deployment inputs. No state store has been created; bootstrap state custody and real operations require separate authorization.
-- Four roots define one resource group each: `dev`, `qa`, `preprod` and `prod`. No Azure resources or remote backends have been deployed.
+- [ADR 005](docs/adr-005-academic-mvp-scope-and-cost-governance.md) selects one temporary Azure for Students subscription in one Entra tenant and DEV only. QA, preprod and prod stay defined but unprovisioned; future environments may use independent subscriptions in the same tenant. Separate tenants require a future governance decision.
+- [State bootstrap](docs/state-bootstrap.md) retains DEV remote state with Entra access, container RBAC, locking and recovery. `bootstrap/admin` and `subscription-controls` are deferred outside the MVP, pending any justified future use or safe retirement after state inventory.
+- Four roots define one resource group each: `dev`, `qa`, `preprod` and `prod`. Historical records report no deployment; actual Azure/remote-state inventory remains unverified.
 - Subscription IDs and resource-group metadata locations are required inputs without defaults. Service apps, workload identities and secrets remain outside this increment; the optional platform requires explicit network allocation and telemetry limits.
 - Environment isolation and promotion are an accepted target strategy, not implemented deployment automation.
 - Azure credentials are unnecessary for working with the current foundation. Future resource and state operations follow the authorization requirements in [AGENTS.md](AGENTS.md#authorization).
+
+Initial cost governance uses the offer-supported native balance/usage views and a reviewed DEV estimate. Cost Analysis and portal budgets require actual offer support; no USD currency, available credit or monthly budget amount is assumed. See [cost governance](docs/subscription-controls.md).
 
 ## Requirements and setup
 
@@ -64,7 +67,8 @@ deployability, permissions, region availability, backend access or workload heal
 For the inactive deployment scaffold, run `bun test tests/deployment-scaffold.test.js`
 to check its disabled/manual/dev-only boundaries without credentials.
 The [Terraform workflow](.github/workflows/terraform.yml) runs these credential-free
-checks for all listed modules and roots on PRs and pushes to `main`; it has no Azure login,
+checks for all listed modules and roots on PRs and pushes to `main`, including
+retained deferred roots; validation does not select them for deployment. It has no Azure login,
 OIDC permission, plan artifact or deployment job.
 
 The test runner also inspects the effective mocked plans for environment and
@@ -75,8 +79,8 @@ authentication or the target subscription selected by the real provider.
 
 `terraform.tfvars.example` and `backend.tfbackend.example` beside each workload root document
 required inputs; dev/bootstrap examples include the owner-verified temporary target
-while unverified deployment inputs remain placeholders. Backend creation and access setup are a separate
-authorized task; no state store exists here. Do not run a real plan until tenant,
+while deferred administrative examples use generic placeholders and unverified deployment inputs remain placeholders. Backend creation and access setup are a separate
+authorized task; existing remote state has not been independently inventoried. Do not run a real plan until tenant,
 subscription, environment, backend and side effects have been reviewed under
 [AGENTS.md](AGENTS.md#authorization).
 
@@ -92,7 +96,7 @@ The [Commitlint workflow](.github/workflows/commitlint.yml) validates hook confi
 ## Repository guide
 
 - [Technical direction](docs/architecture.md): current foundation, intended layout, state handling, and provider/module selection criteria.
-- [Subscription controls](docs/subscription-controls.md): optional subscription-wide budget, notification policy and separate state custody.
+- [Cost governance](docs/subscription-controls.md): current native visibility, DEV attribution and deferred Terraform budget/state capability.
 - [Consumed architecture](docs/architecture-consumption.md): consulted documentation revision, evidence limits, supported scope and unresolved contracts.
 - [ADR 001](docs/adr-001-branching-and-promotion.md): environment isolation, promotion, approval requirements, and documented GitHub enforcement limitations.
 - [ADR 002 (proposed)](docs/adr-002-terraform-module-composition.md): module composition, capability boundaries and their distinction from state isolation.

@@ -5,7 +5,7 @@ resource "azapi_resource" "budget" {
   parent_id = "/subscriptions/${var.subscription_id}"
   body = {
     properties = {
-      amount    = 300
+      amount    = var.budget.amount
       category  = "Cost"
       timeGrain = "Monthly"
       timePeriod = {

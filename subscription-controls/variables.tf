@@ -1,22 +1,28 @@
 variable "subscription_id" {
-  description = "Dedicated Pipesor subscription, confirmed to use USD billing; review tenant and offer before deployment."
+  description = "Explicit target subscription UUID; independently verify offer, billing currency and scope before any future deployment."
   type        = string
   nullable    = false
   validation {
     condition     = can(regex("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.subscription_id))
-    error_message = "Supply the dedicated subscription UUID."
+    error_message = "Supply the target subscription UUID."
   }
 }
 
 variable "budget" {
-  description = "Optional subscription-wide monthly cost notification control. Dates are explicit YYYY-MM-DD; recipients must be approved durable operator addresses. Null creates no budget."
+  description = "Deferred subscription-wide monthly cost notification control. An enabled budget requires an approved amount; no operational threshold is selected. Dates are explicit YYYY-MM-DD; recipients must be approved durable operator addresses. Null creates no budget."
   type = object({
+    # Omission becomes null so the same validation rejects missing and null amounts.
+    amount         = optional(number)
     name           = string
     start_date     = string
     end_date       = string
     contact_emails = set(string)
   })
   default = null
+  validation {
+    condition     = var.budget == null ? true : try(var.budget.amount > 0 && can(jsonencode(var.budget.amount)), false)
+    error_message = "An enabled budget requires an explicit positive finite amount in the verified subscription billing currency."
+  }
   validation {
     condition     = var.budget == null ? true : can(regex("^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,62}$", var.budget.name))
     error_message = "Budget name must be 1-63 letters, digits, underscores, dots or hyphens, starting with a letter or digit."
