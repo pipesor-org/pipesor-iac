@@ -16,10 +16,12 @@ resource "azapi_resource" "subnet" {
   type      = "Microsoft.Network/virtualNetworks/subnets@2024-05-01"
   parent_id = azapi_resource.network.id
   name      = module.naming.names.virtual_network_subnet.name
-  body = { properties = {
+  body = { properties = merge({
     addressPrefix = var.configuration.infrastructure_subnet_prefix
     delegations   = [{ name = "container-apps", properties = { serviceName = "Microsoft.App/environments" } }]
-  } }
+    }, var.key_vault_service_endpoint_enabled ? {
+    serviceEndpoints = [{ service = "Microsoft.KeyVault" }]
+  } : {}) }
   replace_triggers_refs = ["properties.addressPrefix"]
   lifecycle { replace_triggered_by = [azapi_resource.network] }
 }
@@ -55,7 +57,7 @@ resource "azapi_resource" "environment" {
     subnet_prefix = var.configuration.infrastructure_subnet_prefix
   }
   replace_triggers_refs = ["properties.vnetConfiguration", "properties.zoneRedundant", "properties.workloadProfiles"]
-  lifecycle { replace_triggered_by = [azapi_resource.subnet] }
+  lifecycle { replace_triggered_by = [azapi_resource.subnet.id] }
 }
 resource "azapi_resource" "logs" {
   type      = "Microsoft.Insights/diagnosticSettings@2021-05-01-preview"

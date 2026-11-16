@@ -32,3 +32,8 @@ output "static_web_app" {
   description = "Optional static hosting identity and default hostname; no credentials."
   value       = try(module.static_web_app[0].site, null)
 }
+
+output "key_vault" {
+  description = "Environment-owned vault identities/endpoints, or null when disabled; no secret references or payloads."
+  value       = one(module.key_vault[*].vaults)
+}

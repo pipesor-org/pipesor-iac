@@ -15,7 +15,7 @@ run "preprod_root_contract" {
   command = plan
 
   assert {
-    condition     = output.static_web_app == null && length(module.static_web_app) == 0 && output.foundry == null && length(module.foundry) == 0 && output.application_insights == null && length(module.application_insights) == 0 && output.resource_group.name == "rg-pipesor-preprod" && output.container_platform == null && length(module.container_platform) == 0 && output.service_bus == null && output.postgresql == null && length(module.postgresql) == 0 && length(module.service_bus) == 0
+    condition     = output.key_vault == null && length(module.key_vault) == 0 && output.static_web_app == null && length(module.static_web_app) == 0 && output.foundry == null && length(module.foundry) == 0 && output.application_insights == null && length(module.application_insights) == 0 && output.resource_group.name == "rg-pipesor-preprod" && output.container_platform == null && length(module.container_platform) == 0 && output.service_bus == null && output.postgresql == null && length(module.postgresql) == 0 && length(module.service_bus) == 0
     error_message = "This root must retain its own environment identity."
   }
 
@@ -324,6 +324,14 @@ run "combined_foundations_contract" {
       namespace_name = "test-pipesor-preprod-bus"
       location       = "messagingregion"
     }
+    key_vault = {
+      app_material_name    = "test-pipesor-preprod-app"
+      location             = "vaultregion"
+      tenant_id            = "44444444-4444-4444-4444-444444444444"
+      allowed_public_ipv4s = ["203.0.113.5/32"]
+      app_material_readers = { developer = { object_id = "22222222-2222-2222-2222-222222222222", principal_type = "User" } }
+      custody              = { name = "test-pipesor-preprod-usr", principals = { ingestion = { object_id = "33333333-3333-3333-3333-333333333333", principal_type = "ServicePrincipal" } } }
+    }
     application_insights_enabled = true
     foundry                      = { account_name = "test-pipesor-preprod-ai", project_name = "pipesor-preprod", location = "airegion" }
     static_web_app               = { name = "test-pipesor-preprod-web", location = "webregion" }
@@ -393,6 +401,21 @@ run "combined_foundations_contract" {
     override_during = plan
     values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-preprod/providers/Microsoft.Web/staticSites/test-pipesor-preprod-web", output = { properties = { defaultHostname = "synthetic.azurestaticapps.net" } } }
   }
+  override_resource {
+    target          = module.key_vault[0].azapi_resource.vault["app_material"]
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-preprod/providers/Microsoft.KeyVault/vaults/test-pipesor-preprod-app", output = { properties = { vaultUri = "https://test-pipesor-preprod-app.vault.azure.net/" } } }
+  }
+  override_resource {
+    target          = module.key_vault[0].azapi_resource.vault["custody"]
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-preprod/providers/Microsoft.KeyVault/vaults/test-pipesor-preprod-usr", output = { properties = { vaultUri = "https://test-pipesor-preprod-usr.vault.azure.net/" } } }
+  }
+  override_resource {
+    target          = module.key_vault[0].azapi_resource.custody_role[0]
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/providers/Microsoft.Authorization/roleDefinitions/55555555-5555-5555-5555-555555555555" }
+  }
   assert {
     condition     = output.postgresql.subnet_id != output.container_platform.infrastructure_subnet_id && output.postgresql.name == "test-pipesor-preprod-pg" && output.application_insights.workspace_id == output.container_platform.workspace_id
     error_message = "Database and ACA must use distinct subnets while telemetry shares this environment's workspace."
@@ -400,5 +423,69 @@ run "combined_foundations_contract" {
   assert {
     condition     = output.service_bus.name == "test-pipesor-preprod-bus" && output.foundry.account_name == "test-pipesor-preprod-ai" && output.static_web_app.name == "test-pipesor-preprod-web" && output.container_platform.environment_name == "caepipesorpreprod"
     error_message = "All approved foundations must coexist without losing environment identity."
+  }
+}
+
+run "opt_in_key_vault_contract" {
+  command = plan
+  variables {
+    key_vault = {
+      app_material_name    = "test-pipesor-preprod-app"
+      location             = "vaultregion"
+      tenant_id            = "44444444-4444-4444-4444-444444444444"
+      allowed_public_ipv4s = ["203.0.113.5/32"]
+      app_material_readers = { developer = { object_id = "22222222-2222-2222-2222-222222222222", principal_type = "User" } }
+      custody              = { name = "test-pipesor-preprod-usr", principals = { ingestion = { object_id = "33333333-3333-3333-3333-333333333333", principal_type = "ServicePrincipal" } } }
+    }
+  }
+  override_resource {
+    target          = module.resource_group.module.resource_group.azapi_resource.this
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-preprod" }
+  }
+  override_resource {
+    target          = module.key_vault[0].azapi_resource.vault["app_material"]
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-preprod/providers/Microsoft.KeyVault/vaults/test-pipesor-preprod-app", output = { properties = { vaultUri = "https://test-pipesor-preprod-app.vault.azure.net/" } } }
+  }
+  override_resource {
+    target          = module.key_vault[0].azapi_resource.vault["custody"]
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-preprod/providers/Microsoft.KeyVault/vaults/test-pipesor-preprod-usr", output = { properties = { vaultUri = "https://test-pipesor-preprod-usr.vault.azure.net/" } } }
+  }
+  override_resource {
+    target          = module.key_vault[0].azapi_resource.custody_role[0]
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/providers/Microsoft.Authorization/roleDefinitions/55555555-5555-5555-5555-555555555555" }
+  }
+
+  assert {
+    condition     = length(module.key_vault) == 1 && output.container_platform == null && output.key_vault.app_material.name == "test-pipesor-preprod-app" && output.key_vault.custody.name == "test-pipesor-preprod-usr" && output.key_vault.app_material.tenant_id == "44444444-4444-4444-4444-444444444444"
+    error_message = "Vaults opt in independently of ACA and retain this environment's explicit names/tenant."
+  }
+}
+run "app_material_only_key_vault_contract" {
+  command = plan
+  variables {
+    key_vault = {
+      app_material_name    = "test-pipesor-preprod-app"
+      location             = "vaultregion"
+      tenant_id            = "44444444-4444-4444-4444-444444444444"
+      allowed_public_ipv4s = ["203.0.113.5/32"]
+    }
+  }
+  override_resource {
+    target          = module.resource_group.module.resource_group.azapi_resource.this
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-preprod" }
+  }
+  override_resource {
+    target          = module.key_vault[0].azapi_resource.vault["app_material"]
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-preprod/providers/Microsoft.KeyVault/vaults/test-pipesor-preprod-app", output = { properties = { vaultUri = "https://test-pipesor-preprod-app.vault.azure.net/" } } }
+  }
+  assert {
+    condition     = keys(output.key_vault) == ["app_material"]
+    error_message = "Machine integration must not implicitly enable human credential custody."
   }
 }

@@ -4,6 +4,12 @@ Terraform foundation for Pipesor's planned Microsoft Azure infrastructure, with 
 
 ## Current state
 
+- [Ingestion Key Vault](docs/key-vault-integration.md) is opt-in per environment:
+  Standard App-material vault, optional separate OAuth/PKCE custody, scoped Entra
+  grants, recovery protection and default-deny WSL/ACA networking. Terraform never
+  manages secret payloads. The [runbook](docs/key-vault-runbook.md) covers separate
+  authorization and the Ingestion credential-composition handoff.
+
 - [ADR 004](docs/adr-004-mvp-state-and-deployment.md) selects **dev only** for the academic MVP in Ramiro's temporary Azure for Students/UPC tenant. Deployment waits for implemented, locally integrated and validated services plus explicit authorization. GitHub Actions OIDC on Jhon's proposed Debian VirtualBox VM is the deployment target, with procedural dev approvals on GitHub Free. Capacity/isolation/network, Azure access and activation remain unverified.
 
 - [Static Web Apps Free](docs/mvp-resource-baseline.md#static-web-apps-free-hosting) is opt-in per environment for a public static shell only. Authentication, domains and delivery remain separate.
@@ -19,7 +25,7 @@ Terraform foundation for Pipesor's planned Microsoft Azure infrastructure, with 
 - [ADR 005](docs/adr-005-academic-mvp-scope-and-cost-governance.md) selects one temporary Azure for Students subscription in one Entra tenant and DEV only. QA, preprod and prod stay defined but unprovisioned; future environments may use independent subscriptions in the same tenant. Separate tenants require a future governance decision.
 - [State bootstrap](docs/state-bootstrap.md) retains DEV remote state with Entra access, container RBAC, locking and recovery. Unused `bootstrap/admin` and Terraform `subscription-controls` source has been retired after the target inventory review; no Azure or state deletion is implied.
 - Four roots define one resource group each: `dev`, `qa`, `preprod` and `prod`. Provisioning and backend initialization remain separately authorized; ADR 005 records the source-retirement rationale.
-- Subscription IDs and resource-group metadata locations are required inputs without defaults. Service apps, workload identities and secrets remain outside this increment; the optional platform requires explicit network allocation and telemetry limits.
+- Subscription IDs and resource-group metadata locations are required inputs without defaults. Service apps, workload identities and secret payloads remain outside this increment; Key Vault grants accept explicit existing principals, and the optional platform requires explicit network allocation and telemetry limits.
 - Environment isolation and promotion are an accepted target strategy, not implemented deployment automation.
 - Azure credentials are unnecessary for working with the current foundation. Future resource and state operations follow the authorization requirements in [AGENTS.md](AGENTS.md#authorization).
 
@@ -54,7 +60,7 @@ test file. All tests replace AzAPI with a mock and use plan-only runs; `testregi
 and the UUID in tests are synthetic fixtures, not selected Azure inputs.
 
 ```sh
-for directory in modules/resource-group modules/state-store modules/container-platform modules/service-bus modules/postgresql modules/application-insights modules/foundry modules/static-web-app environments/dev environments/qa environments/preprod environments/prod bootstrap/dev bootstrap/qa bootstrap/preprod bootstrap/prod; do
+for directory in modules/resource-group modules/state-store modules/container-platform modules/service-bus modules/postgresql modules/application-insights modules/foundry modules/static-web-app modules/key-vault environments/dev environments/qa environments/preprod environments/prod bootstrap/dev bootstrap/qa bootstrap/preprod bootstrap/prod; do
   terraform -chdir="$directory" init -backend=false -input=false -lockfile=readonly
   terraform -chdir="$directory" validate
   bun tests/terraform-contracts.js "$directory"

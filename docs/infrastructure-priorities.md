@@ -36,8 +36,10 @@ or GitHub billing estimate is claimed.
 
 ## Approved identity lifecycle; pending deployment contract
 
-No further Azure resource in this workstream is ready for an independent increment
-without resolving a decision or contract. Do not create unused identities or placeholder
+The later [Ingestion Key Vault task](key-vault-integration.md) supplies the scoped
+secret-store requirement and local implementation; its Azure provisioning and
+runtime activation remain separate gates. Other resources still require their
+specific decisions/contracts. Do not create unused identities or placeholder
 applications to increase the resource count. Existing Foundry account/project
 identities do not establish the identity type for future ACA callers.
 

@@ -83,3 +83,19 @@ variable "static_web_app" {
   type        = object({ name = string, location = string })
   default     = null
 }
+
+variable "key_vault" {
+  description = "Opt in to environment-owned App material and optional human credential vaults. No secret payloads. Removing deployed configuration proposes destruction."
+  type = object({
+    app_material_name    = string
+    location             = string
+    tenant_id            = string
+    allowed_public_ipv4s = set(string)
+    app_material_readers = optional(map(object({ object_id = string, principal_type = string })), {})
+    custody = optional(object({
+      name       = string
+      principals = optional(map(object({ object_id = string, principal_type = string })), {})
+    }))
+  })
+  default = null
+}
