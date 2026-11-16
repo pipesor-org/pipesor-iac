@@ -20,7 +20,7 @@ function budgetEvents() {
     resource_changes: [resource('azapi_resource.budget[0]', {
       id, name: 'pipesor-monthly', parent_id: subscription, type: 'Microsoft.Consumption/budgets@2024-08-01',
       body: { properties: {
-        amount: 300, category: 'Cost', timeGrain: 'Monthly',
+        amount: 123.45, category: 'Cost', timeGrain: 'Monthly',
         timePeriod: { startDate: '2026-11-01T00:00:00Z', endDate: '2027-11-01T00:00:00Z' },
         notifications: Object.fromEntries([['actual_50',50,'Actual'],['actual_80',80,'Actual'],['actual_100',100,'Actual'],['forecast_100',100,'Forecasted']].map(([key,threshold,thresholdType]) => [key, {
           enabled: true, operator: 'GreaterThanOrEqualTo', threshold, thresholdType,
@@ -35,7 +35,7 @@ test('accepts subscription budget and rejects cost, scope, filter and automation
   checkCallerPlans('subscription-controls', encode(budgetEvents()));
   for (const mutate of [
     value => { value.parent_id += '/resourceGroups/wrong-scope'; },
-    value => { value.body.properties.amount = 1200; },
+    value => { value.body.properties.amount = 300; },
     value => { value.body.properties.filter = { tags: { name: 'environment', values: ['dev'] } }; },
     value => { value.body.properties.timeGrain = 'BillingMonth'; },
     value => { value.body.properties.notifications.actual_50.contactGroups = ['synthetic-action-group']; },
@@ -118,7 +118,7 @@ function changedResource(events, suffix) {
   return events.filter(event => event.type === 'test_plan' && event['@testrun'] !== 'combined_foundations_contract').flatMap(event => event.test_plan.resource_changes).find(change => change.address.endsWith(suffix)).change.after;
 }
 
-test('administrative bootstrap retains its own account and approved MVP recovery inputs', () => {
+test('deferred administrative bootstrap retains its own account and recovery contract', () => {
   checkCallerPlans('bootstrap/admin', encode(bootstrapEvents('admin', 'pipesorstatefixtureadmin')));
   const shared = bootstrapEvents('admin', 'pipesorstatefixturedev');
   expect(() => checkCallerPlans('bootstrap/admin', encode(shared))).toThrow('Caller account name');

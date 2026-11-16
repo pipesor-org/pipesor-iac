@@ -1,7 +1,9 @@
-# Nondeployable examples; actual subscription and recipients require operator review.
-subscription_id = "<dedicated-usd-subscription-uuid>"
+# Deferred, outside the DEV MVP: requires a new cost-control decision and deployment authorization.
+# Verify actual offer support, currency, amount, recipients and backend before opting in.
+subscription_id = "<approved-subscription-uuid>"
 budget          = null
 # budget = {
+#   amount         = <approved-positive-amount-in-verified-billing-currency>
 #   name           = "pipesor-monthly"
 #   start_date     = "<approved-YYYY-MM-01>"
 #   end_date       = "<approved-YYYY-MM-DD>"

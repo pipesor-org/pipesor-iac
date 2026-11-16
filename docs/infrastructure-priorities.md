@@ -1,6 +1,6 @@
 # Incremental infrastructure priorities
 
-Reviewed: 2026-11-06. Source: IaC
+Reconciled: 2026-11-16 under [ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md). Earlier review: 2026-11-06, IaC
 `6666fb8cc3bc2fcce370c2cdc93c3348bdc64e8d` and current architecture/ADRs.
 This is a risk-based working order, not approval of pending resource choices.
 
@@ -12,7 +12,7 @@ of independent engineering checks.
 | Priority | Increment | Gate / risk |
 | --- | --- | --- |
 | 1 | Test the approved foundations together in each environment root | Implemented and merged; retain existing checks rather than create another test-only increment. |
-| 2 | Cost visibility / budget configuration | Implemented and merged; see [subscription controls](subscription-controls.md) and [cost projection](mvp-cost-projection.md). ADR 004 supersedes earlier dedicated-subscription/PAYG assumptions: verify temporary offer, currency and scope before use. Explicit dates, recipients and custody remain deployment inputs; budgets do not stop spending. |
+| 2 | Native cost visibility and DEV attribution | [ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md) supersedes the dedicated-subscription/USD 300 assumptions. Verify actual offer, credit/expiry, currency and supported native usage views; review a complete DEV estimate. Terraform budgets and admin bootstrap are deferred, not DEV prerequisites. |
 | 3 | Runtime identities and grants | System-assigned identities with future Container Apps are approved. First-service execution/access contracts remain pending; no standalone identity resource is needed. |
 | 4 | Extract shared network / monitoring modules | ADR 002 is proposed; preserve current addresses/lifecycle until a concrete refactor is approved. |
 | 5 | Messaging, applications, models, domains and integration | Each requires its event, runtime, model, identity or domain contracts. Ordering within this group follows contract readiness, not this row number. |

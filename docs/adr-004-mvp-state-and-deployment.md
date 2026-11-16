@@ -7,6 +7,17 @@ deployment-scope assumptions. The MVP runner, procedural dev approval model and
 retention policies below are accepted for local scaffolding; activation and Azure
 access remain separately authorized prerequisites.
 
+## Supersession notice (2026-11-16)
+
+[ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md) supersedes this
+record's administrative-state prerequisite, unchanged USD 300 budget, mandatory
+future tenant transition and workstream-specific ownership restrictions. Only DEV
+bootstrap is in current MVP scope; administrative bootstrap/subscription controls
+are deferred. Future independent subscriptions need not use separate tenants.
+The historical text below preserves the 2026-11-06 decision provenance; its
+superseded statements are not current instructions. All other readiness, custody,
+security and human authorization gates remain in force.
+
 ## Deployment scope and temporary Azure target
 
 Only `dev` is selected for the academic MVP. Preserve all four workload roots and

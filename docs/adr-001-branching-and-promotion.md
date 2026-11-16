@@ -15,6 +15,11 @@ Jhon reviews and explicitly authorizes subsequent dev plans, without Ramiro rele
 credentials per deployment. WSL CLI is acceptable for authorized bootstrap/preparation. Other
 environments and their promotion gates remain preserved, not provisioned.
 
+MVP cost/environment reconciliation (2026-11-16): [ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md)
+retains these roots, isolation and immutable promotion semantics, selects DEV only
+in one temporary subscription/tenant, and defers administrative cost infrastructure.
+Future environments may use independent subscriptions without requiring separate tenants.
+
 ## Source and integration
 
 `main` is the single source of truth. Use small, short-lived `feature/<topic>` or
