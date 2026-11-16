@@ -49,3 +49,24 @@ application_insights_enabled = false
 #   name = "pipesor-qa-web"
 #   location = "replacewithregion"
 # }
+
+# Optional Key Vault: public endpoint restricted to approved egress IPv4s and,
+# when configured, this environment's ACA subnet via a KeyVault service endpoint.
+# No secret values are accepted or managed by Terraform.
+key_vault = null
+# key_vault = {
+#   app_material_name    = "<globally-available-app-material-vault-name>"
+#   location             = "<approved-workload-region>"
+#   tenant_id            = "<approved-entra-tenant-uuid>"
+#   allowed_public_ipv4s = ["<approved-wsl-public-egress-ipv4>/32"]
+#   app_material_readers = {
+#     developer = { object_id = "<entra-developer-object-uuid>", principal_type = "User" }
+#   }
+#   # Omit custody until human OAuth/PKCE integration is selected for execution.
+#   # custody = {
+#   #   name = "<different-globally-available-custody-vault-name>"
+#   #   principals = {
+#   #     ingestion = { object_id = "<system-assigned-identity-object-uuid>", principal_type = "ServicePrincipal" }
+#   #   }
+#   # }
+# }

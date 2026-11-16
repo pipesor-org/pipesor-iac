@@ -34,6 +34,7 @@ export function checkCallerPlans(directory, stdout) {
 
   if (kind === 'environments') {
     const baseline = plan(`${environment}_root_contract`);
+    assert.ok(!(baseline.resource_changes ?? []).some(change => change.address.startsWith('module.key_vault[')), 'Opt-out must plan no Key Vault resources');
     assert.ok(!(baseline.resource_changes ?? []).some(change => change.address.startsWith('module.foundry[')), 'Opt-out must plan no Foundry resources');
     assert.ok(!(baseline.resource_changes ?? []).some(change => change.address.startsWith('module.container_platform[')), 'Opt-out must plan no platform resources');
     assert.ok(!(baseline.resource_changes ?? []).some(change => change.address.startsWith('module.static_web_app[')), 'Opt-out must plan no static hosting');
@@ -54,6 +55,7 @@ export function checkCallerPlans(directory, stdout) {
     assert.deepEqual(network.body.properties.addressSpace.addressPrefixes, ['10.50.0.0/16'], 'Caller VNet allocation');
     assert.equal(subnet.body.properties.addressPrefix, '10.50.1.0/24', 'Caller subnet allocation');
     assert.equal(subnet.parent_id, network.id, 'Subnet parent');
+    assert.ok(!Object.hasOwn(subnet.body.properties, 'serviceEndpoints'), 'Platform alone must not add Key Vault endpoints');
     assert.equal(platform.body.properties.vnetConfiguration.infrastructureSubnetId, subnet.id, 'Environment subnet');
     assert.equal(workspace.body.properties.retentionInDays, 45, 'Caller telemetry retention');
     assert.equal(workspace.body.properties.workspaceCapping.dailyQuotaGb, 0.5, 'Caller ingestion cap');
@@ -111,7 +113,50 @@ export function checkCallerPlans(directory, stdout) {
     assert.equal(pgSubnet.body.properties.addressPrefix, '10.50.2.0/28', 'Database caller allocation');
     assert.equal(admin.name, principals[0], 'Database caller administrator');
     assert.equal(server.body.properties.authConfig.tenantId, subscription.split('/')[2], 'Database caller tenant');
+    const vaultPrefix = 'module.key_vault[0].azapi_resource.';
+    const vaultAddresses = [
+      vaultPrefix + 'vault["app_material"]', vaultPrefix + 'vault["custody"]',
+      vaultPrefix + 'app_material_reader["developer"]', vaultPrefix + 'custody_role[0]', vaultPrefix + 'custody_writer["ingestion"]',
+    ];
+    function checkVaults(vaultPlan, subnetIds) {
+      assert.deepEqual(vaultPlan.resource_changes.filter(change => change.address.startsWith('module.key_vault[')).map(change => change.address).sort(), [...vaultAddresses].sort(), 'Key Vault scope contains only vaults and explicit scoped grants');
+      const expectedProperties = {
+        tenantId: '44444444-4444-4444-4444-444444444444', sku: { family: 'A', name: 'standard' }, accessPolicies: [],
+        enableRbacAuthorization: true, enableSoftDelete: true, enablePurgeProtection: true, softDeleteRetentionInDays: 30,
+        enabledForDeployment: false, enabledForDiskEncryption: false, enabledForTemplateDeployment: false, publicNetworkAccess: 'Enabled',
+        networkAcls: { bypass: 'None', defaultAction: 'Deny', ipRules: [{ value: '203.0.113.5/32' }], virtualNetworkRules: subnetIds.map(id => ({ id, ignoreMissingVnetServiceEndpoint: false })) },
+      };
+      const appVault = resource(vaultPlan, vaultAddresses[0]);
+      const custodyVault = resource(vaultPlan, vaultAddresses[1]);
+      for (const [vault, purpose, suffix] of [[appVault, 'app_material', 'app'], [custodyVault, 'custody', 'usr']]) {
+        assert.equal(vault.type, 'Microsoft.KeyVault/vaults@2024-11-01', 'Key Vault API contract');
+        assert.equal(vault.parent_id, group, 'Key Vault environment ownership');
+        assert.equal(vault.name, `test-pipesor-${environment}-${suffix}`, 'Key Vault explicit name');
+        assert.equal(vault.location, 'vaultregion', 'Key Vault explicit location');
+        assert.deepEqual(vault.tags, { environment, purpose }, 'Key Vault environment and custody separation');
+        assert.deepEqual(vault.body, { properties: expectedProperties }, 'Key Vault security and absence of secret payloads');
+        assert.deepEqual(vault.response_export_values, ['properties.vaultUri'], 'Key Vault exports no material');
+        assert.ok(vault.id?.startsWith(group + '/providers/Microsoft.KeyVault/vaults/'), 'Key Vault identity');
+      }
+      const reader = resource(vaultPlan, vaultAddresses[2]);
+      assert.equal(reader.parent_id, appVault.id, 'App material reader vault scope');
+      assert.deepEqual(reader.body.properties, { principalId: principals[0], principalType: 'User', roleDefinitionId: `${subscription}/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6` }, 'App material read-only grant');
+      const definition = resource(vaultPlan, vaultAddresses[3]);
+      assert.equal(definition.parent_id, subscription, 'Credential role canonical subscription definition');
+      assert.deepEqual(definition.body.properties.assignableScopes, [group], 'Credential role assignable scope');
+      assert.deepEqual(definition.body.properties.permissions, [{ actions: [], notActions: [], notDataActions: [], dataActions: ['Microsoft.KeyVault/vaults/secrets/getSecret/action', 'Microsoft.KeyVault/vaults/secrets/setSecret/action'] }], 'Credential runtime get/set only');
+      const writer = resource(vaultPlan, vaultAddresses[4]);
+      assert.equal(writer.parent_id, custodyVault.id, 'Credential writer custody-only scope');
+      assert.deepEqual(writer.body.properties, { principalId: principals[1], principalType: 'ServicePrincipal', roleDefinitionId: definition.id }, 'Credential writer exact role');
+      assert.deepEqual(vaultPlan.output_changes.key_vault.after, Object.fromEntries([[appVault, 'app_material'], [custodyVault, 'custody']].map(([vault, purpose]) => [purpose, { id: vault.id, name: vault.name, location: 'vaultregion', tenant_id: expectedProperties.tenantId, uri: vault.output.properties.vaultUri }])), 'Key Vault caller nonsecret interface');
+    }
+    checkVaults(plan('opt_in_key_vault_contract'), []);
+    const appOnly = plan('app_material_only_key_vault_contract');
+    assert.deepEqual(appOnly.resource_changes.filter(change => change.address.startsWith('module.key_vault[')).map(change => change.address), [vaultAddresses[0]], 'App material opt-in must not enable human custody or grants');
     const combined = plan('combined_foundations_contract');
+    const combinedSubnet = resource(combined, prefix + 'subnet');
+    assert.deepEqual(combinedSubnet.body.properties.serviceEndpoints, [{ service: 'Microsoft.KeyVault' }], 'Combined ACA Key Vault service endpoint');
+    checkVaults(combined, [combinedSubnet.id]);
     const approvedResources = new Set([
       'module.resource_group.module.resource_group.azapi_resource.this',
       ...['network', 'subnet', 'workspace', 'environment', 'logs'].map(name => prefix + name),
@@ -122,6 +167,7 @@ export function checkCallerPlans(directory, stdout) {
       'module.foundry[0].azapi_resource.account',
       'module.foundry[0].azapi_resource.project',
       'module.static_web_app[0].azapi_resource.site',
+      ...vaultAddresses,
     ]);
     for (const change of combined.resource_changes ?? []) {
       // Resource-group AVM helpers remain owned by the pinned upstream module.
@@ -190,7 +236,7 @@ export function checkCallerPlans(directory, stdout) {
 
 if (import.meta.main) {
   const directory = process.argv[2];
-  const module = /^modules\/(resource-group|state-store|container-platform|service-bus|postgresql|application-insights|foundry|static-web-app)$/.test(directory);
+  const module = /^modules\/(resource-group|state-store|container-platform|service-bus|postgresql|application-insights|foundry|static-web-app|key-vault)$/.test(directory);
   assert.ok(module || /^(environments|bootstrap)\/(dev|qa|preprod|prod)$/.test(directory), 'Select one reviewed Terraform directory');
   const command = ['terraform', `-chdir=${directory}`, 'test', '-filter=tests/contract.tftest.hcl'];
   if (!module) command.push('-json', '-verbose');

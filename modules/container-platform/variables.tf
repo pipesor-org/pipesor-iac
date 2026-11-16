@@ -57,3 +57,10 @@ variable "configuration" {
     error_message = "Supply a positive daily ingestion cap in GB; unlimited ingestion is not the MVP contract."
   }
 }
+
+variable "key_vault_service_endpoint_enabled" {
+  description = "Enable Microsoft.KeyVault service endpoints on the existing ACA subnet only when the environment opts into Key Vault."
+  type        = bool
+  nullable    = false
+  default     = false
+}

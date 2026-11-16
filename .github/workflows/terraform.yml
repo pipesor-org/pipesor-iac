@@ -17,6 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         directory:
+          - modules/key-vault
           - modules/static-web-app
           - modules/foundry
           - modules/application-insights

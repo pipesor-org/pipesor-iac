@@ -16,6 +16,25 @@ rates below are historical sensitivity inputs, not refreshed prices, current
 entitlements or an approved operating budget. Administrative bootstrap and Terraform
 subscription controls are retired from source; DEV state storage remains required.
 
+## Key Vault incremental scenario (2026-11-16)
+
+The [Key Vault capability](key-vault-integration.md#network-and-cost-decision)
+uses Standard Secrets with operation billing and no fixed per-vault Secrets
+charge in the consulted retail model. Microsoft's
+[Retail Prices API](https://prices.azure.com/api/retail/prices) returns the
+East US 2 Standard Operations meter at USD 0.03 per 10,000 operations. Reproduce
+with `serviceName eq 'Key Vault' and armRegionName eq 'eastus2' and priceType eq 'Consumption'`
+and `currencyCode=USD`; recheck at the actual selected region and offer.
+
+At an illustrative 100,000 **total** operations per month across the selected
+vaults, this is USD 0.30/month or USD 2.10 over seven months. This is a sensitivity
+scenario, not measured application volume, a free allowance, verified Students
+currency/credit or a complete DEV estimate. Include repeated uncached machine
+reads, human pair/verifier writes/reads and verification calls. Classic service
+endpoints add no separate endpoint charge; existing ACA/network/state costs remain.
+Any later audit ingestion/retention adds its own volume-dependent cost. No HSM,
+private endpoint, NAT gateway or additional telemetry resource is added here.
+
 ## Historical basis (2026-11-06)
 
 The earlier record used a **single dedicated Pipesor subscription with USD billing**

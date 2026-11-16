@@ -1,5 +1,15 @@
 # MVP resource baseline
 
+## Ingestion Key Vault capability
+
+The current Key Vault task authorizes the local configuration described in the
+[design and maintainer handoff](key-vault-integration.md): optional Standard
+App-material vault plus optional separate human OAuth/PKCE custody in the existing
+environment roots/states, scoped Entra grants, default-deny networking and 30-day
+protected recovery. Terraform owns no secret payloads. Only DEV is selected for
+eventual deployment; the [runbook](key-vault-runbook.md) retains separate
+authorization for registration, grants, provisioning, initialization and activation.
+
 ## Direction accepted for local implementation
 
 The user selected the cost-optimized MVP research supplied in the implementation

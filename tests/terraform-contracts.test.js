@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { checkCallerPlans } from './terraform-contracts.js';
@@ -39,8 +39,28 @@ function environmentEvents() {
   const foundry = { resource_changes: [resource('module.foundry[0].azapi_resource.account', account), resource('module.foundry[0].azapi_resource.project', project)], output_changes: { foundry: { after: { account_id: account.id, account_name: account.name, project_id: project.id, project_name: project.name, location: 'airegion', endpoint: 'synthetic' } } } };
   const web = { id: `${group}/providers/Microsoft.Web/staticSites/test-pipesor-qa-web`, parent_id: group, name: 'test-pipesor-qa-web', location: 'webregion', tags: { environment: 'qa' }, body: { sku: { name: 'Free', tier: 'Free' }, properties: { publicNetworkAccess: 'Enabled', enterpriseGradeCdnStatus: 'Disabled', stagingEnvironmentPolicy: 'Disabled', buildProperties: { skipGithubActionWorkflowGeneration: true } } }, output: { properties: { defaultHostname: 'synthetic.azurestaticapps.net' } } };
   const hosting = { resource_changes: [resource('module.static_web_app[0].azapi_resource.site', web)], output_changes: { static_web_app: { after: { id: web.id, name: web.name, location: 'webregion', default_hostname: 'synthetic.azurestaticapps.net' } } } };
-  const combined = structuredClone({ resource_changes: [...enabled.resource_changes, ...databasePlan.resource_changes.filter(change => change.address.startsWith('module.postgresql')), ...foundry.resource_changes, ...hosting.resource_changes], output_changes: { ...enabled.output_changes, ...foundry.output_changes, ...hosting.output_changes } });
+  const vaultPrefix = 'module.key_vault[0].azapi_resource.';
+  const vaultProperties = {
+    tenantId: '44444444-4444-4444-4444-444444444444', sku: { family: 'A', name: 'standard' }, accessPolicies: [],
+    enableRbacAuthorization: true, enableSoftDelete: true, enablePurgeProtection: true, softDeleteRetentionInDays: 30,
+    enabledForDeployment: false, enabledForDiskEncryption: false, enabledForTemplateDeployment: false, publicNetworkAccess: 'Enabled',
+    networkAcls: { bypass: 'None', defaultAction: 'Deny', ipRules: [{ value: '203.0.113.5/32' }], virtualNetworkRules: [] },
+  };
+  const vault = (purpose, suffix) => ({ id: `${group}/providers/Microsoft.KeyVault/vaults/test-pipesor-qa-${suffix}`, type: 'Microsoft.KeyVault/vaults@2024-11-01', parent_id: group, name: `test-pipesor-qa-${suffix}`, location: 'vaultregion', tags: { environment: 'qa', purpose }, body: { properties: structuredClone(vaultProperties) }, response_export_values: ['properties.vaultUri'], output: { properties: { vaultUri: `https://test-pipesor-qa-${suffix}.vault.azure.net/` } } });
+  const appVault = vault('app_material', 'app');
+  const custodyVault = vault('custody', 'usr');
+  const definition = { id: `${subscription}/providers/Microsoft.Authorization/roleDefinitions/55555555-5555-5555-5555-555555555555`, parent_id: subscription, body: { properties: { assignableScopes: [group], permissions: [{ actions: [], notActions: [], notDataActions: [], dataActions: ['Microsoft.KeyVault/vaults/secrets/getSecret/action', 'Microsoft.KeyVault/vaults/secrets/setSecret/action'] }] } } };
+  const vaultPlan = { resource_changes: [
+    resource(vaultPrefix + 'vault["app_material"]', appVault), resource(vaultPrefix + 'vault["custody"]', custodyVault),
+    resource(vaultPrefix + 'app_material_reader["developer"]', { parent_id: appVault.id, body: { properties: { principalId: principals[0], principalType: 'User', roleDefinitionId: `${subscription}/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6` } } }),
+    resource(vaultPrefix + 'custody_role[0]', definition),
+    resource(vaultPrefix + 'custody_writer["ingestion"]', { parent_id: custodyVault.id, body: { properties: { principalId: principals[1], principalType: 'ServicePrincipal', roleDefinitionId: definition.id } } }),
+  ], output_changes: { key_vault: { after: Object.fromEntries([[appVault, 'app_material'], [custodyVault, 'custody']].map(([item, purpose]) => [purpose, { id: item.id, name: item.name, location: 'vaultregion', tenant_id: vaultProperties.tenantId, uri: item.output.properties.vaultUri }])) } } };
+  const appOnly = { resource_changes: [resource(vaultPrefix + 'vault["app_material"]', appVault)] };
+  const combined = structuredClone({ resource_changes: [...enabled.resource_changes, ...databasePlan.resource_changes.filter(change => change.address.startsWith('module.postgresql')), ...foundry.resource_changes, ...hosting.resource_changes, ...vaultPlan.resource_changes], output_changes: { ...enabled.output_changes, ...foundry.output_changes, ...hosting.output_changes, ...vaultPlan.output_changes } });
   const get = address => combined.resource_changes.find(change => change.address === address).change.after;
+  get('module.container_platform[0].azapi_resource.subnet').body.properties.serviceEndpoints = [{ service: 'Microsoft.KeyVault' }];
+  for (const purpose of ['app_material', 'custody']) get(vaultPrefix + `vault["${purpose}"]`).body.properties.networkAcls.virtualNetworkRules = [{ id: subnet.id, ignoreMissingVnetServiceEndpoint: false }];
   const pg = get(pgPrefix + 'server');
   pg.id = `${group}/providers/Microsoft.DBforPostgreSQL/flexibleServers/test-pipesor-qa-pg`;
   get(pgPrefix + 'subnet').id = `${network.id}/subnets/database`;
@@ -57,7 +77,7 @@ function environmentEvents() {
   combined.output_changes.postgresql = { after: { id: pg.id, subnet_id: get(pgPrefix + 'subnet').id, private_dns_zone_id: pg.body.properties.network.privateDnsZoneArmResourceId } };
   combined.output_changes.application_insights = { after: { id: get('module.application_insights[0].azapi_resource.component').id, workspace_id: workspace.id } };
   combined.output_changes.service_bus = { after: { id: get('module.service_bus[0].azapi_resource.namespace').id } };
-  return [...eventsFor('combined_foundations_contract', combined), ...eventsFor('opt_in_static_web_app_contract', hosting), ...eventsFor('opt_in_foundry_contract', foundry), ...eventsFor('qa_root_contract', { resource_changes: [] }), ...eventsFor('opt_in_platform_contract', enabled), ...eventsFor('opt_in_postgresql_contract', databasePlan), ...eventsFor('opt_in_application_insights_contract', { resource_changes: [resource('module.container_platform[0].azapi_resource.workspace', workspace), resource('module.application_insights[0].azapi_resource.component', { parent_id: group, location: 'workloadregion', name: 'appipipesorqa', body: { properties: { WorkspaceResourceId: workspace.id, DisableLocalAuth: true } } })] }), summary];
+  return [...eventsFor('opt_in_key_vault_contract', vaultPlan), ...eventsFor('app_material_only_key_vault_contract', appOnly), ...eventsFor('combined_foundations_contract', combined), ...eventsFor('opt_in_static_web_app_contract', hosting), ...eventsFor('opt_in_foundry_contract', foundry), ...eventsFor('qa_root_contract', { resource_changes: [] }), ...eventsFor('opt_in_platform_contract', enabled), ...eventsFor('opt_in_postgresql_contract', databasePlan), ...eventsFor('opt_in_application_insights_contract', { resource_changes: [resource('module.container_platform[0].azapi_resource.workspace', workspace), resource('module.application_insights[0].azapi_resource.component', { parent_id: group, location: 'workloadregion', name: 'appipipesorqa', body: { properties: { WorkspaceResourceId: workspace.id, DisableLocalAuth: true } } })] }), summary];
 }
 
 function bootstrapEvents(environment = 'prod', account = 'pipesorstatefixtureprod') {
@@ -217,4 +237,52 @@ test('rejects unapproved resources and region changes in the combined plan', () 
   const events = environmentEvents();
   combinedResource(events, 'module.service_bus[0].azapi_resource.namespace').location = 'workloadregion';
   expect(() => checkCallerPlans('environments/qa', encode(events))).toThrow('Combined explicit region forwarding');
+});
+
+
+test('rejects Key Vault payloads, weak recovery, bypass and wrong tenant', () => {
+  for (const corrupt of [
+    value => { value.body.properties.secretValue = 'synthetic'; },
+    value => { value.body.properties.enablePurgeProtection = false; },
+    value => { value.body.properties.networkAcls.bypass = 'AzureServices'; },
+    value => { value.body.properties.tenantId = principals[0]; },
+  ]) {
+    const events = environmentEvents();
+    corrupt(changedResource(events, 'vault["app_material"]'));
+    expect(() => checkCallerPlans('environments/qa', encode(events))).toThrow('Key Vault security and absence of secret payloads');
+  }
+});
+
+test('rejects overprivileged custody and cross-vault grants', () => {
+  const scope = environmentEvents();
+  changedResource(scope, 'custody_writer["ingestion"]').parent_id = changedResource(scope, 'vault["app_material"]').id;
+  expect(() => checkCallerPlans('environments/qa', encode(scope))).toThrow('Credential writer custody-only scope');
+  const permissions = environmentEvents();
+  changedResource(permissions, 'custody_role[0]').body.properties.permissions[0].dataActions.push('Microsoft.KeyVault/vaults/secrets/delete');
+  expect(() => checkCallerPlans('environments/qa', encode(permissions))).toThrow('Credential runtime get/set only');
+});
+
+test('rejects Key Vault opt-out activation and secret resources', () => {
+  const baseline = environmentEvents();
+  baseline.find(event => event.type === 'test_plan' && event['@testrun'] === 'qa_root_contract').test_plan.resource_changes.push(resource('module.key_vault[0].azapi_resource.vault["app_material"]', {}));
+  expect(() => checkCallerPlans('environments/qa', encode(baseline))).toThrow('Opt-out must plan no Key Vault');
+  const payload = environmentEvents();
+  payload.find(event => event.type === 'test_plan' && event['@testrun'] === 'opt_in_key_vault_contract').test_plan.resource_changes.push(resource('module.key_vault[0].azapi_resource.secret', {}));
+  expect(() => checkCallerPlans('environments/qa', encode(payload))).toThrow('Key Vault scope contains only vaults and explicit scoped grants');
+});
+
+test('rejects combined missing service endpoints and missing-endpoint bypass', () => {
+  const absent = environmentEvents();
+  delete combinedResource(absent, 'module.container_platform[0].azapi_resource.subnet').body.properties.serviceEndpoints;
+  expect(() => checkCallerPlans('environments/qa', encode(absent))).toThrow('Combined ACA Key Vault service endpoint');
+  const bypass = environmentEvents();
+  combinedResource(bypass, 'module.key_vault[0].azapi_resource.vault["custody"]').body.properties.networkAcls.virtualNetworkRules[0].ignoreMissingVnetServiceEndpoint = true;
+  expect(() => checkCallerPlans('environments/qa', encode(bypass))).toThrow('Key Vault security and absence of secret payloads');
+});
+
+
+test('ACA replacement tracks subnet identity rather than service endpoint updates', () => {
+  const source = readFileSync(resolve(import.meta.dir, '../modules/container-platform/main.tf'), 'utf8');
+  expect(source).toMatch(/replace_triggered_by\s*=\s*\[azapi_resource\.subnet\.id\]/);
+  expect(source).not.toMatch(/replace_triggered_by\s*=\s*\[azapi_resource\.subnet\]/);
 });

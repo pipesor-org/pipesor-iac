@@ -2,7 +2,7 @@
 
 This foundation defines one resource group in each of four Terraform roots and an
 optional shared MVP container platform, Service Bus namespace, PostgreSQL server,
-Application Insights component, Microsoft Foundry account/project and Static Web Apps Free site per environment; it is not an Azure landing zone. Provisioning and backend initialization remain separately authorized; ADR 005 records the administrative source-retirement rationale.
+Application Insights component, Microsoft Foundry account/project, Static Web Apps Free site and Ingestion Key Vault capability per environment; it is not an Azure landing zone. Provisioning and backend initialization remain separately authorized; ADR 005 records the administrative source-retirement rationale.
 The academic MVP selects only `dev` in Ramiro's temporary Azure for Students
 subscription/UPC tenant; [ADR 004](adr-004-mvp-state-and-deployment.md) records the
 verified target, custody and deployment gates. No infrastructure may be deployed
@@ -210,6 +210,20 @@ independently of ACA. Only identity and default hostname are exported. No conten
 authentication, domain binding, repository integration or delivery workflow is
 created. Entra application authentication and ACA API authorization remain required
 before real operational use; public assets must contain no sensitive data/secrets.
+
+## Ingestion Key Vault
+
+The [Key Vault design and maintainer handoff](key-vault-integration.md) define the
+task-authorized optional capability in each existing workload root/state: one
+Standard vault for exact-version GitHub App signing/webhook material and optional
+separate OAuth/PKCE custody. Entra RBAC separates App readers from custody get/set
+writers. Default-deny networking supports approved WSL public egress and the
+existing ACA subnet service endpoint; soft delete/purge protection retain recovery.
+No secret payload or version is managed by Terraform. All environment inputs
+default to disabled; only DEV is selected for eventual authorized deployment.
+The [runbook](key-vault-runbook.md) separates read-only preparation from separately
+authorized provisioning, grants, initialization and runtime activation. No new
+backend, administrative root, identity or state boundary is introduced.
 
 ## Cost governance
 

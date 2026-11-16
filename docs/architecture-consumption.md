@@ -2,6 +2,12 @@
 
 ## Source snapshot and authority
 
+The snapshot below records the original resource-group increment. For the later
+Key Vault scope, use the [current Ingestion source inventory and handoff](key-vault-integration.md#sources-and-current-behavior):
+the subsequently accepted machine-material and DD-020 Secrets protocols supersede
+the original unspecified-secret-store row within that scope. They do not resolve
+remaining runtime, cleanup or authorization requirements.
+
 Read-only source: `pipesor-org/pipesor-docs`, local checkout
 `/home/jhon/code/pipesor/pipesor-docs`, Git revision
 [`c0871ac9a62bad62b8c679255fe0a4b9c6574d2e`](https://github.com/pipesor-org/pipesor-docs/tree/c0871ac9a62bad62b8c679255fe0a4b9c6574d2e).

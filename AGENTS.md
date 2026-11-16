@@ -6,7 +6,7 @@
   [ADR 001](docs/adr-001-branching-and-promotion.md) before Terraform work. Add infrastructure
   only for an agreed requirement; the current implementation is limited to the
   resource-group foundation, separate state-bootstrap configuration and optional
-  shared MVP container platform, Service Bus namespace, PostgreSQL foundation, Application Insights component, Microsoft Foundry account/project foundation, Static Web Apps Free hosting foundation. [ADR 005](docs/adr-005-academic-mvp-scope-and-cost-governance.md) selects only DEV in one temporary Students subscription/tenant; unused administrative bootstrap and Terraform subscription controls are retired from source after the target inventory review. DEV state and all four future environment contracts remain intact.
+  shared MVP container platform, Service Bus namespace, PostgreSQL foundation, Application Insights component, Microsoft Foundry account/project foundation, Static Web Apps Free hosting foundation and optional Ingestion Key Vault capability. [ADR 005](docs/adr-005-academic-mvp-scope-and-cost-governance.md) selects only DEV in one temporary Students subscription/tenant; unused administrative bootstrap and Terraform subscription controls are retired from source after the target inventory review. DEV state and all four future environment contracts remain intact.
 - The main session scopes the task, delegates implementation to `terraform_engineer`,
   verifies results, then asks `infrastructure_reviewer` to review the final diff.
   Resolve findings and repeat affected checks/review. Handle small documentation-only

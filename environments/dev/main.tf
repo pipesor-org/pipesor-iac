@@ -6,11 +6,12 @@ module "resource_group" {
 }
 
 module "container_platform" {
-  count             = var.container_platform == null ? 0 : 1
-  source            = "../../modules/container-platform"
-  environment       = "dev"
-  resource_group_id = module.resource_group.resource_group.id
-  configuration     = var.container_platform
+  count                              = var.container_platform == null ? 0 : 1
+  source                             = "../../modules/container-platform"
+  environment                        = "dev"
+  resource_group_id                  = module.resource_group.resource_group.id
+  configuration                      = var.container_platform
+  key_vault_service_endpoint_enabled = var.key_vault != null
 }
 
 module "service_bus" {
@@ -60,4 +61,13 @@ module "static_web_app" {
   environment       = "dev"
   resource_group_id = module.resource_group.resource_group.id
   configuration     = var.static_web_app
+}
+
+module "key_vault" {
+  count              = var.key_vault == null ? 0 : 1
+  source             = "../../modules/key-vault"
+  environment        = "dev"
+  resource_group_id  = module.resource_group.resource_group.id
+  configuration      = var.key_vault
+  allowed_subnet_ids = var.container_platform == null ? [] : [module.container_platform[0].platform.infrastructure_subnet_id]
 }

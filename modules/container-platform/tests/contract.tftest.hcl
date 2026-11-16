@@ -35,6 +35,10 @@ override_resource {
 run "consumption_network_and_logs_contract" {
   command = plan
   assert {
+    condition     = !contains(keys(azapi_resource.subnet.body.properties), "serviceEndpoints")
+    error_message = "Existing platform-only callers must retain their subnet contract without an endpoint."
+  }
+  assert {
     condition = alltrue([
       for resource in [azapi_resource.network, azapi_resource.workspace, azapi_resource.environment] :
       resource.parent_id == var.resource_group_id && resource.location == var.configuration.location
@@ -223,4 +227,13 @@ run "reject_low_retention" {
     }
   }
   expect_failures = [var.configuration]
+}
+
+run "key_vault_service_endpoint" {
+  command = plan
+  variables { key_vault_service_endpoint_enabled = true }
+  assert {
+    condition     = azapi_resource.subnet.body.properties.serviceEndpoints == [{ service = "Microsoft.KeyVault" }] && azapi_resource.subnet.body.properties.delegations == [{ name = "container-apps", properties = { serviceName = "Microsoft.App/environments" } }]
+    error_message = "Key Vault access must add only its service endpoint without losing ACA delegation."
+  }
 }
