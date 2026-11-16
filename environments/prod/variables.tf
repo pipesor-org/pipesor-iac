@@ -78,6 +78,55 @@ variable "foundry" {
   default = null
 }
 
+variable "rag_runtime_contract" {
+  description = "Opt in to the approved RAG runtime handoff only; records required identities/configuration but creates no Container App, Entra application, role assignment, model deployment or database grant."
+  type = object({
+    embedding_deployment_name   = string
+    embedding_model_version     = string
+    tenant_id                   = string
+    rag_audience_client_id      = string
+    recommendation_client_id    = string
+    recommendation_principal_id = string
+    rag_query_app_role_id       = string
+    rag_runtime_principal_id    = string
+    rag_import_principal_id     = string
+    rag_migration_principal_id  = string
+  })
+  default = null
+  validation {
+    condition     = var.rag_runtime_contract == null || (var.container_platform != null && var.foundry != null && var.postgresql != null)
+    error_message = "The RAG runtime contract requires container_platform, foundry and postgresql foundations."
+  }
+  validation {
+    condition = var.rag_runtime_contract == null ? true : alltrue([
+      for value in [var.rag_runtime_contract.tenant_id, var.rag_runtime_contract.rag_audience_client_id, var.rag_runtime_contract.recommendation_client_id, var.rag_runtime_contract.recommendation_principal_id, var.rag_runtime_contract.rag_query_app_role_id, var.rag_runtime_contract.rag_runtime_principal_id, var.rag_runtime_contract.rag_import_principal_id, var.rag_runtime_contract.rag_migration_principal_id] :
+      can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", value))
+    ])
+    error_message = "RAG tenant, application, app-role and principal identifiers must be UUIDs."
+  }
+  validation {
+    condition     = var.rag_runtime_contract == null ? true : can(regex("^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$", var.rag_runtime_contract.embedding_deployment_name))
+    error_message = "The embedding deployment name must be 3-64 lowercase letters, digits or hyphens."
+  }
+  validation {
+    condition     = var.rag_runtime_contract == null ? true : length(trimspace(var.rag_runtime_contract.embedding_model_version)) > 0
+    error_message = "An explicit nonempty embedding model version is required."
+  }
+  validation {
+    condition     = var.rag_runtime_contract == null || try(var.rag_runtime_contract.tenant_id == var.postgresql.tenant_id, false)
+    error_message = "The RAG and PostgreSQL Entra tenant IDs must match."
+  }
+  validation {
+    condition = var.rag_runtime_contract == null ? true : length(toset([
+      var.rag_runtime_contract.recommendation_principal_id,
+      var.rag_runtime_contract.rag_runtime_principal_id,
+      var.rag_runtime_contract.rag_import_principal_id,
+      var.rag_runtime_contract.rag_migration_principal_id,
+    ])) == 4
+    error_message = "Recommendation, RAG runtime, importer and migrator principals must be distinct."
+  }
+}
+
 variable "static_web_app" {
   description = "Opt in to Free public static hosting only. Removing deployed configuration proposes destruction."
   type        = object({ name = string, location = string })

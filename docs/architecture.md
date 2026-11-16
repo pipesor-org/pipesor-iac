@@ -198,9 +198,12 @@ endpoints. No application instrumentation or service identity is created.
 The [Foundry baseline](mvp-resource-baseline.md#shared-microsoft-foundry-foundation)
 records the approved account/project composition and public Entra-only boundary.
 Each root opts in independently through `foundry`; null adds no account or project.
-Explicit names and region are required. No model deployment, service access grant
-or application interface is inferred; model and processing-geography contracts
-remain separate decisions. Existing roots, state and approval gates are preserved.
+Explicit names and region are required. ADR-021 fixes the RAG application handoff,
+but this foundation still creates no model deployment, service access grant, Entra
+application/app role or SQL grant. Nullable root inputs record the required RAG
+identifiers and produce nonsecret configuration only after platform, Foundry and
+PostgreSQL are selected. Region/quota availability and every grant remain separately
+validated and authorized. Existing roots, state and approval gates are preserved.
 
 ## Static Web Apps Free hosting
 

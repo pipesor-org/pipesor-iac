@@ -431,9 +431,12 @@ Implementation references:
 and [AzAPI 2.9.0 resource behavior](https://github.com/Azure/terraform-provider-azapi/blob/v2.9.0/docs/resources/resource.md).
 The guide's example key-authentication and model defaults are not adopted.
 
-An empty account/project provides no inference. Model/version, deployment type
-and processing geography, embedding dimensions/ownership, approved corpus and
-sanitization contracts, caller identities and actual regional quota remain open.
+An empty account/project provides no inference. ADR-021 in `pipesor-docs` now fixes
+the RAG application contract to `text-embedding-3-small`, 1536 dimensions, Azure
+OpenAI API v1 and system-assigned identity with `Cognitive Services OpenAI User`.
+It does not prove model availability or create a deployment/grant. Model version,
+deployment type, processing geography, approved corpus and actual regional quota
+remain reviewed inputs. NLP and diagnostic inference keep their separate decisions.
 Public/private network placement does not select inference processing geography.
 Do not promise zero data retention; review provider abuse monitoring and any
 stateful API before real evidence use. Public access is approved for the MVP;
@@ -442,6 +445,26 @@ requires it. No current whole-solution monetary threshold is selected;
 actual offer/currency, model usage/rates and the complete DEV forecast remain unverified. Budgets
 and alerts are not hard spend caps. Four roots do not require four active accounts.
 Canonical architecture reconciliation remains separate in `pipesor-docs`.
+
+### RAG runtime handoff
+
+Each environment root exposes a nullable `rag_runtime_contract` handoff. It requires
+the platform, Foundry and PostgreSQL opt-ins and records only reviewed nonsecret
+identifiers/configuration: proposed embedding deployment name, model version,
+tenant, exclusive RAG audience, Recommendation client/object identity, `Rag.Query`
+app-role ID, RAG runtime identity and separate importer/migrator principals.
+
+The output fixes model/dimension/API, 15-second total embedding budget, two retries,
+the built-in `Cognitive Services OpenAI User` role ID and symbolic database access
+classes (`knowledge_read`, `knowledge_read_write`, `knowledge_ddl`). It combines the
+service-reported Foundry endpoint and PostgreSQL FQDN with those reviewed inputs.
+
+This is a delivery contract, not provisioning: no Container App, Entra application,
+app role, assignment, model deployment or SQL role/grant is created. Those resources
+require their own implementation, live Azure validation, reviewed plan and explicit
+apply authorization. Recommendation, RAG runtime, importer and migrator principals
+must remain distinct; the input contract rejects collapsed identities. Least
+privilege and custody must be reviewed before activation.
 
 ## Static Web Apps Free hosting
 
