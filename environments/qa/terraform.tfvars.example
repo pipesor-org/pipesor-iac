@@ -43,6 +43,21 @@ application_insights_enabled = false
 #   project_name = "pipesor-qa"
 #   location     = "replace-with-approved-region"
 # }
+# RAG v0.1 handoff only; requires platform, Foundry and PostgreSQL opt-ins.
+# Supplying these identifiers does not create identities, app roles, assignments, model deployments or SQL grants.
+# rag_runtime_contract = {
+#   embedding_deployment_name    = "pipesor-qa-embeddings"
+#   embedding_model_version      = "<verified-model-version>"
+#   tenant_id                    = "<tenant-uuid>"
+#   rag_audience_client_id       = "<rag-api-application-client-uuid>"
+#   recommendation_client_id     = "<recommendation-managed-identity-client-uuid>"
+#   recommendation_principal_id  = "<recommendation-managed-identity-object-uuid>"
+#   rag_query_app_role_id        = "<rag-query-app-role-uuid>"
+#   rag_runtime_principal_id     = "<rag-system-identity-object-uuid>"
+#   rag_import_principal_id      = "<authorized-importer-object-uuid>"
+#   rag_migration_principal_id   = "<authorized-migrator-object-uuid>"
+# }
+
 
 # Optional Free public static hosting; no application content or authentication.
 # static_web_app = {

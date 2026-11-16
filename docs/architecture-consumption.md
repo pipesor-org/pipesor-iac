@@ -45,7 +45,7 @@ reports, generated diagrams/SQL and proposed classes are not independent approva
 | `deployment.observability_platform`; ADR-002 | Monitor and Application Insights. | Does not specify workspace topology, retention for telemetry or sampling. |
 | `entra_id`, `api_management`; ADR-003/016 | Entra user identity and APIM perimeter. | No app registrations, role assignments, workflow identity or API policy selected. |
 | `github`, `deployment.github_authentication`; ADR-005/016 | Read-only GitHub App with installation tokens; workflow publishes artifacts natively. | Secret storage deliberately unspecified; do not infer Key Vault. |
-| `deployment.llm`; ADR-004/007/015 | Azure OpenAI by API; embeddings provider selected. | Concrete LLM variant, embedding model and dimension remain open. |
+| `deployment.llm`; ADR-004/007/015/021 | Azure OpenAI by API; RAG uses text-embedding-3-small/1536 with API v1, system-assigned identity and Cognitive Services OpenAI User. | IaC records the handoff only; live deployment, region/quota, assignments and corpus remain gated. Diagnostic LLM and NLP selections are separate. |
 | ADR-008/018 | React/TypeScript dashboard on Static Web Apps. | Does not supply a build/delivery or API contract. |
 | ADR-009/010/011/012/014/017 | No reporting/audit/detector services, LogBERT, independent Privacy Gateway, notifications or direct scanner APIs in the current MVP; diagnostic components remain internal. | No excluded components restored to complete infrastructure. |
 
