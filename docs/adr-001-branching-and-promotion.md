@@ -17,7 +17,7 @@ environments and their promotion gates remain preserved, not provisioned.
 
 MVP cost/environment reconciliation (2026-11-16): [ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md)
 retains these roots, isolation and immutable promotion semantics, selects DEV only
-in one temporary subscription/tenant, and defers administrative cost infrastructure.
+in one temporary subscription/tenant, and retires unused administrative cost infrastructure from source after the target inventory review.
 Future environments may use independent subscriptions without requiring separate tenants.
 
 ## Source and integration

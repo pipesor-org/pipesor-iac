@@ -3,7 +3,7 @@ output "backend" {
   value = {
     storage_account_name = module.storage.name
     container_name       = module.container.name
-    key                  = var.environment == "admin" ? "subscription-controls/budget.tfstate" : "${var.environment}/foundation.tfstate"
+    key                  = "${var.environment}/foundation.tfstate"
     use_azuread_auth     = true
   }
 }

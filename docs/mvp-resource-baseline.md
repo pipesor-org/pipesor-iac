@@ -59,8 +59,8 @@ telemetry, runtime and network usage before authorization.
 
 [Cost governance](subscription-controls.md) starts with native offer-supported
 credit/usage visibility and DEV resource-group attribution. Terraform subscription
-budgets and `bootstrap/admin` are deferred outside the MVP; their contracts remain
-for existing-state recovery and future review. No current budget amount or billing
+budget and administrative-bootstrap roots are retired from source after the
+target inventory review. No current budget amount or billing
 currency is approved by the old implementation.
 
 The [increment priorities](infrastructure-priorities.md) distinguish independent
