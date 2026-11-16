@@ -377,12 +377,12 @@ run "accept_recovery_365_and_smallest_egress_range" {
   }
 }
 
-run "administrative_mvp_state_contract" {
+run "dev_mvp_state_contract" {
   command = plan
   variables {
-    environment = "admin"
+    environment = "dev"
     settings = {
-      account_name  = "pipesorstatefixtureadmin"
+      account_name  = "pipesorstatefixturedev"
       location      = "testregion"
       replication   = "LRS"
       recovery_days = 30
@@ -391,15 +391,23 @@ run "administrative_mvp_state_contract" {
     }
   }
   assert {
-    condition     = output.backend.storage_account_name == "pipesorstatefixtureadmin" && output.backend.container_name == "tfstate-admin" && output.backend.key == "subscription-controls/budget.tfstate" && output.backend.use_azuread_auth == true && output.resource_group_name == "rg-pipesor-state-admin"
-    error_message = "Administrative state must retain its own account, group, container and subscription-controls key."
+    condition     = output.backend.storage_account_name == "pipesorstatefixturedev" && output.backend.container_name == "tfstate-dev" && output.backend.key == "dev/foundation.tfstate" && output.backend.use_azuread_auth == true && output.resource_group_name == "rg-pipesor-state-dev"
+    error_message = "DEV state must retain its own account, group, container and environment key."
   }
   assert {
     condition     = module.storage.resource.body.sku.name == "Standard_LRS" && module.blob_service.resource.body.properties.isVersioningEnabled == true && module.blob_service.resource.body.properties.deleteRetentionPolicy.enabled == true && module.blob_service.resource.body.properties.deleteRetentionPolicy.days == 30 && module.blob_service.resource.body.properties.containerDeleteRetentionPolicy.enabled == true && module.blob_service.resource.body.properties.containerDeleteRetentionPolicy.days == 30
-    error_message = "MVP administrative state must preserve explicit LRS, versioning and 30-day blob/container soft deletion."
+    error_message = "MVP DEV state must preserve explicit LRS, versioning and 30-day blob/container soft deletion."
   }
   assert {
     condition     = module.storage.resource.body.properties.allowSharedKeyAccess == false && module.storage.resource.body.properties.allowBlobPublicAccess == false && module.storage.resource.body.properties.networkAcls.defaultAction == "Deny" && module.storage.resource.body.properties.networkAcls.bypass == "None" && module.container.resource.body.properties.publicAccess == "None"
-    error_message = "Administrative state must retain Entra-only private blobs and deny unmatched networks."
+    error_message = "DEV state must retain Entra-only private blobs and deny unmatched networks."
   }
+}
+
+run "reject_admin_scope" {
+  command = plan
+  variables {
+    environment = "admin"
+  }
+  expect_failures = [var.environment]
 }

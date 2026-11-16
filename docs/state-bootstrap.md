@@ -11,14 +11,13 @@ Choose distinct names and identities for all four environments when commissioned
 
 [ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md) selects only
 `bootstrap/dev` for the MVP; do not provision the other environment stores.
-`bootstrap/admin` is deferred outside MVP scope. Its only present responsibility
-is the backend for the deferred `subscription-controls` root: separate
-`rg-pipesor-state-admin`, account and `tfstate-admin` container with key
-`subscription-controls/budget.tfstate`. It is not a DEV prerequisite. Preserve its
-addresses and independent bootstrap-state custody pending a reviewed deployment
-inventory; absence of local state does not establish absence of remote deployment.
-Do not delete the root, set deployed inputs to null, destroy resources or migrate
-its controls into DEV state as a consequence of this scope decision.
+The unused `bootstrap/admin` and Terraform `subscription-controls` roots have been
+retired from source after the intended target inventory review; see ADR 005's
+retirement addendum. The state-store module accepts only the four workload
+environments. No Azure resource or state is deleted, migrated or reassigned. Any
+historical external state discovered later requires its own reviewed ownership and
+recovery decision using the historical source revision, not a recreated admin
+boundary in DEV state.
 
 [ADR 004](adr-004-mvp-state-and-deployment.md) otherwise retains the custody and
 readiness gates.
@@ -49,8 +48,7 @@ cost and require later reviewed maintenance.
 ## Inputs still required
 
 The DEV example includes the owner-supplied temporary subscription and tenant
-from ADR 004 plus the agreed LRS/30-day choices. Deferred admin examples use generic
-target placeholders; they do not select the institutional subscription. They remain nondeployable examples,
+from ADR 004 plus the agreed LRS/30-day choices. They remain nondeployable examples,
 not default inputs or evidence of Jhon's access. Other environments retain generic
 placeholders. Before creating any ignored local variable file, review:
 
@@ -116,7 +114,7 @@ apply. Provision/register the required Azure resource providers separately if
 necessary; registration is disabled here. Verify the configured network rules,
 Entra-only access, role scopes and recovery behavior against Azure before use.
 A later authorized backend operation uses this root's nonsecret `backend` output
-for the corresponding workload or subscription-controls root, with tenant/identity
+for the corresponding workload root, with tenant/identity
 supplied by the approved execution environment. Keep `use_azuread_auth = true`; never add storage keys.
 
 The azurerm backend uses Blob leases for state locking. This implementation does
@@ -158,8 +156,7 @@ Sources: [AzAPI 2.9.0 provider settings](https://github.com/Azure/terraform-prov
 ## Local verification and test boundaries
 
 Run the existing formatting checks from the repository root. For
-`modules/state-store`, each `bootstrap/<environment>` directory and
-`bootstrap/admin`, use:
+`modules/state-store` and each `bootstrap/<environment>` directory, use:
 
 ```sh
 terraform init -backend=false -input=false -lockfile=readonly
@@ -173,8 +170,8 @@ for authentication, transport, firewall, recovery and private containers, and
 resource-backed grant outputs for role/principal scope. Synthetic computed IDs
 bridge provider-only values; no security body values are supplied by mocks.
 Negative cases reject malformed/insecure inputs; caller tests guard environment
-and administrative identity/backend wiring. Independent caller assertions also
-verify admin LRS/30-day configuration, private container and container-scoped grants.
+identity/backend wiring. The DEV MVP module contract also checks LRS/30-day recovery,
+private containers and Entra-only access; caller assertions retain container-scoped grants.
 They establish Terraform contracts, not Azure API acceptance, network reachability, authorization or successful recovery.
 
 ## Dependencies and references

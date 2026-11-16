@@ -2,7 +2,7 @@
 
 This foundation defines one resource group in each of four Terraform roots and an
 optional shared MVP container platform, Service Bus namespace, PostgreSQL server,
-Application Insights component, Microsoft Foundry account/project and Static Web Apps Free site per environment; it is not an Azure landing zone. Historical records report no deployment; actual Azure/remote-state inventory remains unverified.
+Application Insights component, Microsoft Foundry account/project and Static Web Apps Free site per environment; it is not an Azure landing zone. Provisioning and backend initialization remain separately authorized; ADR 005 records the administrative source-retirement rationale.
 The academic MVP selects only `dev` in Ramiro's temporary Azure for Students
 subscription/UPC tenant; [ADR 004](adr-004-mvp-state-and-deployment.md) records the
 verified target, custody and deployment gates. No infrastructure may be deployed
@@ -24,7 +24,6 @@ Create directories only when they contain a real implementation:
 | --- | --- |
 | `environments/<environment>/` | One initial root for each environment defined in ADR 001, with provider configuration, backend declaration, inputs and dependency lock file. |
 | `modules/<capability>/` | Reusable composition with a meaningful shared contract; no environment values, backend or provider credentials. |
-| `subscription-controls/` | Deferred root/state for subscription cost notifications, outside the active MVP and workload states; no approved current amount. |
 | `<root>/tests/*.tftest.hcl` | Plan-only or fully mocked contract tests for that root/module. |
 | `docs/` | Infrastructure decisions and their rationale. |
 | `.codex/` | Repository-local coordinator settings and specialist agent definitions. |
@@ -140,10 +139,10 @@ placed into it later. No existing resources are imported or adopted by this code
 `modules/state-store` and `bootstrap/dev` implement the active remote-state
 prerequisite described in [state bootstrap](state-bootstrap.md). Only the DEV
 state account is selected for the MVP. The other environment bootstrap roots
-retain future isolation contracts. `bootstrap/admin` serves only the deferred
-`subscription-controls` state and is outside active MVP scope. Its definitions,
-addresses and independent bootstrap custody contract are retained until an
-explicitly reviewed inventory establishes whether retirement is safe.
+retain future isolation contracts. The unused `bootstrap/admin` and Terraform
+`subscription-controls` roots are retired from source after the intended target
+inventory review, as recorded in ADR 005. No existing Azure object or state is
+deleted or migrated, and no replacement administrative state is introduced.
 The user selected a public endpoint restricted to approved operator IPs; the
 configuration denies other networks and grants explicit container-scoped Entra
 access. MVP examples explicitly select LRS and 30-day soft deletion with versioning;
@@ -219,6 +218,5 @@ USD 300/dedicated-subscription assumption. Use native offer-supported usage and
 credit visibility, a complete DEV estimate and resource-group attribution first.
 [Cost governance](subscription-controls.md) documents feature-eligibility limits,
 existing environment tags and future independent-subscription governance.
-`subscription-controls` and its admin backend are deferred; neither is a DEV
-prerequisite. No control is moved into workload state and no new state boundary
-is introduced. Budgets are notifications, not hard spending limits.
+The unused Terraform budget and admin backend roots are retired from source.
+No control is moved into workload state and no new state boundary is introduced. Budgets are notifications, not hard spending limits.

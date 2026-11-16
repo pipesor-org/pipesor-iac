@@ -12,7 +12,7 @@ of independent engineering checks.
 | Priority | Increment | Gate / risk |
 | --- | --- | --- |
 | 1 | Test the approved foundations together in each environment root | Implemented and merged; retain existing checks rather than create another test-only increment. |
-| 2 | Native cost visibility and DEV attribution | [ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md) supersedes the dedicated-subscription/USD 300 assumptions. Verify actual offer, credit/expiry, currency and supported native usage views; review a complete DEV estimate. Terraform budgets and admin bootstrap are deferred, not DEV prerequisites. |
+| 2 | Native cost visibility and DEV attribution | [ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md) supersedes the dedicated-subscription/USD 300 assumptions. Verify actual offer, credit/expiry, currency and supported native usage views; review a complete DEV estimate. Unused Terraform budget and admin-bootstrap source is retired after the target inventory review; neither is a DEV prerequisite. |
 | 3 | Runtime identities and grants | System-assigned identities with future Container Apps are approved. First-service execution/access contracts remain pending; no standalone identity resource is needed. |
 | 4 | Extract shared network / monitoring modules | ADR 002 is proposed; preserve current addresses/lifecycle until a concrete refactor is approved. |
 | 5 | Messaging, applications, models, domains and integration | Each requires its event, runtime, model, identity or domain contracts. Ordering within this group follows contract readiness, not this row number. |

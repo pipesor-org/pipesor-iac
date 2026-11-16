@@ -5,8 +5,8 @@ The [workflow scaffold](../.github/workflow-templates/terraform-dev.yml.example)
 is deliberately inactive and stops before cloud access. Do not register a runner,
 create federation, enable workflows, connect state or apply Terraform under this
 local-preparation task. [ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md)
-selects only DEV and its state store; administrative bootstrap and subscription
-controls are deferred and are not activation prerequisites.
+selects only DEV and its state store; unused administrative bootstrap and Terraform
+subscription controls are retired from source and are not activation prerequisites.
 
 ## Acceptance checks before activation
 
@@ -82,8 +82,8 @@ Serialize operations on dev state with cancellation disabled and Terraform's
 backend lease. Workflow concurrency serializes running jobs; it does not reserve
 state between separate plan and apply runs or guarantee FIFO order. Record the
 current deployment candidate and reject superseded plans; coordinate all operators.
-Other environment states and subscription-control administration are outside this
-workflow. Future production requires stronger approval enforcement and its own
+Other environment states are outside this workflow. Any future subscription-wide
+cost automation requires a separately justified decision. Future production requires stronger approval enforcement and its own
 reviewed design before automation.
 
 After an approved apply, verify resources/security/workload health and capture the

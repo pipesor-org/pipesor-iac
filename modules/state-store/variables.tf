@@ -55,11 +55,11 @@ variable "settings" {
   }
 }
 variable "environment" {
-  description = "Fixed state scope: a workload environment or admin for subscription-wide controls."
+  description = "Fixed workload environment state scope; administrative state is not supported."
   type        = string
   nullable    = false
   validation {
-    condition     = contains(["dev", "qa", "preprod", "prod", "admin"], var.environment)
-    error_message = "State scope must be dev, qa, preprod, prod or admin."
+    condition     = contains(["dev", "qa", "preprod", "prod"], var.environment)
+    error_message = "State scope must be dev, qa, preprod or prod."
   }
 }

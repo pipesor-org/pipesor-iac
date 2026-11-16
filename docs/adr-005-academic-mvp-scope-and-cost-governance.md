@@ -7,6 +7,37 @@ mandatory future tenant transition and session-specific workstream restrictions.
 ADR 001 promotion and ADR 004 readiness, security, custody and authorization gates
 otherwise remain in force.
 
+## Retirement addendum (2026-11-16)
+
+The project owner subsequently authorized read-only inventory of the intended
+Students target and source retirement if no active objects were found. The
+review confirmed the intended subscription/tenant context and no active Pipesor
+resources, storage accounts or subscription budgets there. This satisfies the
+source-retirement condition below; it does not prove that these roots were never
+deployed elsewhere or inspect historical external Terraform state. Command/results
+evidence belongs to the retirement PR rather than permanent operating instructions.
+
+Retire `bootstrap/admin` and Terraform `subscription-controls` from source, including
+their examples, locks, CI entries and obsolete tests. Remove the admin-only state-store
+scope/backend branch; preserve the four workload scopes and their existing state
+keys, security and recovery contracts. No Azure object, state or identity is deleted,
+migrated or changed, and no replacement resource/root is created. If external state
+is later discovered, use the historical source revision for a separately reviewed
+recovery/ownership decision. Source removal is not authorization to destroy anything.
+
+This addendum supersedes the initial deferral, retained-admin-contract and optional
+Terraform-budget-input instructions in the historical decision text below. Current
+cost governance uses native offer-supported views; future independent-subscription
+controls require an actual need and explicit approval, not placeholder infrastructure.
+All DEV-only deployment, future environment isolation, state custody and authorization
+requirements remain in force.
+
+## Initial reconciliation decision (preserved history)
+
+The following sections record the initial reconciliation before the target inventory
+and source-retirement decision. Read their deferral/retention statements with the
+superseding retirement addendum above.
+
 ## Evidence and root cause
 
 Pipesor is a two-engineer academic prototype with approximately seven months of

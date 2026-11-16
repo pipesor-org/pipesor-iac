@@ -14,7 +14,7 @@ QA, preprod and prod remain unprovisioned. Actual offer, currency, available cre
 expiry and a complete DEV estimate must be verified before authorization. The old
 rates below are historical sensitivity inputs, not refreshed prices, current
 entitlements or an approved operating budget. Administrative bootstrap and Terraform
-subscription controls are deferred; DEV state storage remains required.
+subscription controls are retired from source; DEV state storage remains required.
 
 ## Historical basis (2026-11-06)
 
@@ -26,7 +26,7 @@ application traffic or billable telemetry. Subscription settings were not inspec
 Checked-in workload defaults enable only resource groups: their projected resource
 cost is $0/environment/month. This does not prove the Azure subscription has zero
 spending. Optional foundations, state bootstrap and the budget were opt-in; the historical workflow reported no
-Azure resources or backends deployed. Actual deployment inventory remains unverified.
+Azure resources or backends deployed. ADR 005 records the subsequent administrative source-retirement decision and its evidence limits.
 
 | Foundation component | Planning rate / monthly amount |
 | --- | --- |
@@ -102,4 +102,4 @@ Azure billing data after deployment; current local checks cannot measure cost.
 - [ACA managed networking resources](https://learn.microsoft.com/en-us/azure/container-apps/custom-virtual-networks)
 - [Load balancer pricing and zero-rule qualification](https://azure.microsoft.com/en-us/pricing/details/load-balancer/)
 - [PostgreSQL stop/start behavior](https://learn.microsoft.com/en-us/azure/postgresql/configure-maintain/how-to-stop-server)
-- [Subscription budget contract](subscription-controls.md)
+- [Native cost governance](subscription-controls.md)

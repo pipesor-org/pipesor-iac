@@ -1,4 +1,4 @@
-# Cost visibility and deferred subscription controls
+# Native cost visibility and governance
 
 ## Current academic MVP
 
@@ -57,50 +57,24 @@ own native usage/credit visibility, approved budget policy and accountable owner
 This requires no shared-module redesign, permanent global budget or separate tenant.
 Do not duplicate a whole-project spending allowance across environment roots.
 
-## Retained Terraform capability, outside the MVP
+## Source retirement and future decisions
 
-`subscription-controls/` retains its own partial Azure backend and one optional
-`Microsoft.Consumption/budgets@2024-08-01` resource with Terraform 1.17.1 / AzAPI
-2.9.0. `bootstrap/admin` exists only to host that state and is also deferred.
-Neither is a DEV prerequisite. No administrative resource is moved into workload
-state, and no replacement module/root is introduced. Current deployment/state
-inventory is unverified; preserve addresses and custody until an owner-approved
-inventory and decision establish whether these roots can be retired safely.
+The unused Terraform `subscription-controls/` and `bootstrap/admin` roots are
+retired from source after the intended target inventory review, under
+[ADR 005's retirement addendum](adr-005-academic-mvp-scope-and-cost-governance.md#retirement-addendum-2026-11-16).
+No Azure resource or state is deleted or migrated, and no replacement administrative
+state, budget module or workload-state budget is introduced. The four workload
+roots and their independent remote-state contracts remain intact.
 
-`budget = null` remains the default. A later enabled budget requires explicit
-`amount`, `name`, `start_date`, `end_date` and 1–5 approved `contact_emails`.
-Amount must be positive and finite in the actual subscription billing currency;
-the API does not select currency. There is no default monetary amount. For any
-existing non-null input, add a newly reviewed `amount` before validation. Changing
-an existing amount requires a reviewed plan and authorization; this compatibility
-step does not authorize an apply or reinstate the old 300 threshold.
+Future automated cost controls require evidence of operational need, actual offer
+support, explicit per-environment scope/subscription, approved currency/amount,
+notification ownership and an appropriate lifecycle/access boundary. Native views
+and supported portal budgets remain the initial option. Do not restore unused
+Terraform roots merely to preserve hypothetical flexibility. If historical external
+state is discovered later, reconcile ownership and recovery against its historical
+source revision before any separately authorized state operation.
 
-Dates are explicit YYYY-MM-DD, sent as UTC midnight. Start must be a month's first
-day on/after 2017-06-01 and end later. Azure's deployment-time start window and offer
-support still require verification. The retained unfiltered calendar-month contract
-uses email-only Actual 50/80/100 and Forecasted 100 percent notifications with
-`GreaterThanOrEqualTo`; it creates no action groups, automation, filters or grants.
-Recipients must be durable approved operator addresses with verified delivery and
-response ownership. Outputs expose only budget identity.
+## References
 
-Do not set an existing budget to null as a pause: that proposes deletion and loss
-of alerts. Renaming or changing subscription can replace it; neither reduces
-workload spending. Never create duplicate management of the same named budget.
-A later activation requires a justified responsibility, separate backend/container
-RBAC and custody, verified tenant/subscription/offer/currency, reviewed inputs/plan
-and explicit target/action authorization. All state operations retain their gates.
-No current cloud deployment automation or Azure credentials are added to CI.
-
-## Validation and references
-
-Backend-disabled initialization, validation and filtered fully mocked plan tests
-check default absence, explicit amount forwarding/rejection, subscription scope,
-notification policy, dates/emails and safe outputs. Independent caller assertions
-reject altered amounts, filters and automation. Retained admin tests protect recovery
-contracts; testing them does not commission the root. Local checks do not prove
-actual feature support, reporting latency, permissions, backend access or mail delivery.
-
-- [Budget API 2024-08-01](https://learn.microsoft.com/en-us/azure/templates/microsoft.consumption/2024-08-01/budgets)
 - [Budget behavior and prerequisites](https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/tutorial-acm-create-budgets)
-- [AzAPI 2.9.0 resource schema](https://github.com/Azure/terraform-provider-azapi/blob/v2.9.0/docs/resources/resource.md)
 - [ADR 001](adr-001-branching-and-promotion.md) and [state bootstrap](state-bootstrap.md)

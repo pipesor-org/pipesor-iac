@@ -12,8 +12,8 @@ access remain separately authorized prerequisites.
 [ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md) supersedes this
 record's administrative-state prerequisite, unchanged USD 300 budget, mandatory
 future tenant transition and workstream-specific ownership restrictions. Only DEV
-bootstrap is in current MVP scope; administrative bootstrap/subscription controls
-are deferred. Future independent subscriptions need not use separate tenants.
+bootstrap is in current MVP scope; unused administrative bootstrap/subscription
+control source is retired under ADR 005's subsequent retirement addendum. Future independent subscriptions need not use separate tenants.
 The historical text below preserves the 2026-11-06 decision provenance; its
 superseded statements are not current instructions. All other readiness, custody,
 security and human authorization gates remain in force.
