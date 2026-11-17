@@ -7,6 +7,21 @@ mandatory future tenant transition and session-specific workstream restrictions.
 ADR 001 promotion and ADR 004 readiness, security, custody and authorization gates
 otherwise remain in force.
 
+## DEV foundation readiness addendum
+
+The project owner now directs that DEV infrastructure foundations may be
+provisioned before application services are integrated locally. This supersedes
+the application-readiness prerequisite for infrastructure in ADR 004 and the
+historical text below. It does not authorize Azure writes or state operations.
+Confirm the target, required permissions, provider registrations, network,
+cost and credit evidence, state custody and recovery; review a fresh plan and
+obtain explicit human authorization for each target and action before execution.
+Application deployment and activation remain a separate milestone requiring
+implemented, locally integrated and validated services and their delivery,
+identity and security contracts. Preserve DEV-only scope, separate state roots,
+ADR 001 promotion, recovery and approval requirements. No administrative root
+or new approval mechanism is introduced.
+
 ## Retirement addendum (2026-11-16)
 
 The project owner subsequently authorized read-only inventory of the intended

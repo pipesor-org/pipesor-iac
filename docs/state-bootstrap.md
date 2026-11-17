@@ -21,8 +21,8 @@ boundary in DEV state.
 
 [ADR 004](adr-004-mvp-state-and-deployment.md) otherwise retains the custody and
 readiness gates.
-All provisioning waits for implemented, locally integrated and validated services
-and explicit target/action authorization. WSL Azure CLI is acceptable for Jhon's
+DEV foundation provisioning can precede local application integration under ADR 005,
+with explicit target/action authorization. WSL Azure CLI is acceptable for Jhon's
 bootstrap/preparation; Actions OIDC on the proposed dedicated Debian VirtualBox
 runner is the target for later MVP workload execution. Jhon reviews/authorizes dev
 plans procedurally within Ramiro's initial access/scope boundaries; there is no

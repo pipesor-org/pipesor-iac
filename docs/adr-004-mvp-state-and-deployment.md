@@ -9,6 +9,11 @@ access remain separately authorized prerequisites.
 
 ## Supersession notice (2026-11-16)
 
+ADR 005's DEV foundation readiness addendum also supersedes the historical
+application-readiness prerequisite for provisioning infrastructure. Application
+deployment remains gated on local integration and validation. All Azure writes
+and state operations still need explicit target/action authorization.
+
 [ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md) supersedes this
 record's administrative-state prerequisite, unchanged USD 300 budget, mandatory
 future tenant transition and workstream-specific ownership restrictions. Only DEV

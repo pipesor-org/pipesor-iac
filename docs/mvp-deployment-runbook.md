@@ -10,6 +10,10 @@ subscription controls are retired from source and are not activation prerequisit
 
 ## Acceptance checks before activation
 
+These checks govern the application deployment workflow and its runner. The
+separate DEV foundation provisioning milestone follows ADR 005's readiness
+addendum and does not require application integration or workflow activation.
+
 Record results in a non-sensitive private-repository readiness record. The current
 VM specification is an input, not proof that these checks passed.
 

@@ -1,0 +1,319 @@
+# First DEV foundation provisioning
+
+This procedure implements ADR 005's infrastructure/application readiness addendum
+and retains ADR 004's state custody controls.
+It prepares existing foundations, without application containers, broker entities,
+SQL migrations, models or secret payloads. Commands are ordered instructions for
+an authorized operator; this document itself authorizes no Azure or state change.
+Use a reviewed immutable commit from `main`, Terraform 1.17.1, the README's Bun
+version, Azure CLI, Python 3, `age` and a private Bash terminal in WSL2.
+
+## Configuration and naming
+
+Use the DEV examples beside their existing roots. The subscription and tenant
+come from ADR 004. `southcentralus` is the proposed common region; each selected resource's
+subscription-specific availability must pass the checks below. Current subscription policy permits this region. ACA quota is zero in all permitted regions, so ACA, PostgreSQL and Application Insights remain disabled. The advertised Static Web Apps regions do not intersect permitted locations, so static hosting remains disabled. The region, address
+allocation and operator grants must be included in the apply authorization.
+
+| Input | Selected preparation value and reason |
+| --- | --- |
+| State account | `stpipesordev04f339b7`, Standard LRS; private `tfstate-dev`, key `dev/foundation.tfstate`; 30-day blob/container recovery and versioning. |
+| Workload/state groups | Existing AVM names `rg-pipesor-dev` / `rg-pipesor-state-dev`. |
+| Deferred VNet / ACA subnet | `10.50.0.0/16` / `10.50.1.0/24`; dedicated PostgreSQL subnet `10.50.2.0/28`; check against intended VPN/peering routes before approval. |
+| Deferred workspace | Existing platform name; 30-day retention, 0.1 GB/day ingestion cap. Cap is delayed and is not a hard spending limit. |
+| Service Bus / deferred PostgreSQL | `sb-pipesor-dev-04f339b7` Standard / `pg-pipesor-dev-04f339b7` PG17 B2s, 32 GiB, Entra-only, seven-day local backups. |
+| Foundry | `ai-pipesor-dev-04f339b7` AIServices S0 account, `pipesor-dev` project; no deployment or consumption selected. |
+| Deferred Static Web App / Key Vault | `swa-pipesor-dev-04f339b7` Free / `kv-pipesor-dev-04f339b7` Standard, protected 30-day recovery; no credentials initialized. |
+| State/operator access | Explicitly approved operator Entra object ID and WSL public egress IPv4; obtain anew below. |
+| Deferred PostgreSQL administrator | Recommend the approved DEV operator for first creation, then an approved group when one actually exists. Supply its real object ID/name; do not invent a group. |
+
+Naming audit: AVM naming **0.3.0** is retained for group/platform/telemetry names
+whose scope already supplies uniqueness. Explicit global-service inputs retain
+service constraints and use the first eight subscription hex characters as a
+stable collision-reduction suffix. This is not a uniqueness guarantee: check
+availability before every initial create. Future subscriptions select different
+suffixes/inputs; shared modules have no subscription-specific defaults. Local DNS,
+subnets, role assignment UUIDs and child project names keep their existing scope.
+No naming-module migration, random suffix, provider upgrade or resource-address
+change is needed. AVM resource-group 0.4.0/state-store Storage AVM 0.8.0 and direct
+AzAPI 2.9.0 resources preserve their existing ownership.
+
+## Read-only preflight and remaining decisions
+
+From the repository root, set `PRIVATE_DIR` to a directory **outside this checkout
+on encrypted storage**, with encrypted independent backup destinations already
+accessible. Do not use `/tmp` for the sole live state. Keep decryption keys separate.
+
+```bash
+set -euo pipefail
+set +x
+export DEV_SUBSCRIPTION=04f339b7-f969-4e17-801c-da6e81e78ffd
+export DEV_TENANT=0e0cb060-09ad-49f5-a005-68b9b49aa1f6
+: "${PRIVATE_DIR:?Set an encrypted private directory outside Git}"
+umask 077
+mkdir -p "$PRIVATE_DIR"
+chmod 700 "$PRIVATE_DIR"
+for tool in terraform bun az python3 age; do command -v "$tool" >/dev/null; done
+terraform version
+az account show --query '{subscription:id,tenant:tenantId,state:state}' -o json
+[[ "$(az account show --query id -o tsv)" == "$DEV_SUBSCRIPTION" ]]
+[[ "$(az account show --query tenantId -o tsv)" == "$DEV_TENANT" ]]
+[[ "$(az account show --query state -o tsv)" == Enabled ]]
+export ARM_SUBSCRIPTION_ID="$DEV_SUBSCRIPTION" ARM_TENANT_ID="$DEV_TENANT"
+# Reject competing service-principal and federated credentials before selecting CLI.
+for name in ARM_CLIENT_ID ARM_CLIENT_ID_FILE_PATH ARM_CLIENT_SECRET ARM_CLIENT_SECRET_FILE_PATH ARM_CLIENT_CERTIFICATE ARM_CLIENT_CERTIFICATE_PATH ARM_CLIENT_CERTIFICATE_PASSWORD ARM_OIDC_TOKEN ARM_OIDC_TOKEN_FILE_PATH ARM_OIDC_REQUEST_URL ARM_OIDC_REQUEST_TOKEN AZURE_CLIENT_ID AZURE_CLIENT_SECRET AZURE_CLIENT_CERTIFICATE_PATH AZURE_FEDERATED_TOKEN_FILE; do
+  [[ -z "${!name:-}" ]] || { echo "Remove competing credential setting: $name" >&2; exit 1; }
+done
+export ARM_USE_CLI=true ARM_USE_MSI=false ARM_USE_OIDC=false ARM_USE_AKS_WORKLOAD_IDENTITY=false
+```
+
+If `age` is absent, install its distribution package with
+`sudo apt-get update && sudo apt-get install age`, then rerun the tool check.
+Verified recipient keys and protected backup paths must still be supplied by the
+custodians. If the context is wrong, deliberately authenticate/select the expected target;
+never continue with an arbitrary default. `az login --tenant "$DEV_TENANT"` and
+`az account set --subscription "$DEV_SUBSCRIPTION"` configure the local session.
+
+```bash
+for provider in Microsoft.Storage Microsoft.Network Microsoft.App Microsoft.OperationalInsights Microsoft.Insights Microsoft.ServiceBus Microsoft.DBforPostgreSQL Microsoft.CognitiveServices Microsoft.Web Microsoft.KeyVault; do
+  az provider show --subscription "$DEV_SUBSCRIPTION" --namespace "$provider" \
+    --query '{namespace:namespace,state:registrationState}' -o json
+ done
+az resource list --subscription "$DEV_SUBSCRIPTION" --query '[].{type:type,name:name,location:location}' -o json
+az rest --method get --url "https://management.azure.com/subscriptions/$DEV_SUBSCRIPTION/providers/Microsoft.Authorization/permissions?api-version=2022-04-01" --query 'value[].{actions:actions,notActions:notActions}' -o json
+az policy assignment list --scope "/subscriptions/$DEV_SUBSCRIPTION" --disable-scope-strict-match --query '[].{name:name,scope:scope,policy:policyDefinitionId}' -o json
+az storage account check-name --subscription "$DEV_SUBSCRIPTION" --name stpipesordev04f339b7 --query '{available:nameAvailable,reason:reason}' -o json || echo 'Storage name availability unresolved; retry after registration'
+az cognitiveservices account list-skus --subscription "$DEV_SUBSCRIPTION" --kind AIServices --location southcentralus -o json > "$PRIVATE_DIR/foundry-skus.json"
+```
+
+Inspect inherited deny assignments/policies and expand the actual role definitions;
+management `actions` alone does not establish a role's full boundary. Bootstrap
+needs resource-group/storage management plus `Microsoft.Authorization/roleAssignments/write`
+for container-scoped grants. Workloads need management writes for the selected
+resource types and subnet `join/action` / `joinViaServiceEndpoint/action` permissions.
+Foundry creation also creates its existing system identities; PostgreSQL's configured
+Entra administrator is an explicit permission boundary. Runtime data access is not
+implied by subscription management rights. A plan identity must have resource
+reads only; backend Blob Data Contributor/lease permissions are a separate scope.
+
+Before enabling deferred capabilities, confirm B2s/PG17/32-GiB eligibility, ACA managed-environment quota and SWA Free availability for this exact offer. Confirm Foundry AIServices S0/project support before selecting it. Public
+provider locations do not prove these. Inspect global names with documented
+nonmutating check-name APIs (POST validates a name and creates no object):
+
+```bash
+az rest --method post --url "https://management.azure.com/subscriptions/$DEV_SUBSCRIPTION/providers/Microsoft.KeyVault/checkNameAvailability?api-version=2024-11-01" --body '{"name":"kv-pipesor-dev-04f339b7","type":"Microsoft.KeyVault/vaults"}' -o json
+az rest --method post --url "https://management.azure.com/subscriptions/$DEV_SUBSCRIPTION/providers/Microsoft.ServiceBus/CheckNameAvailability?api-version=2024-01-01" --body '{"name":"sb-pipesor-dev-04f339b7"}' -o json
+```
+
+An absent existing resource is not global availability.
+Record an inaccessible/quota API as an unresolved gap rather
+than trying a create. An allowed fallback region must still satisfy PG/platform
+co-location; regenerate/review inputs instead of changing locations after approval.
+
+Verify credit balance, expiry and billing currency in the actual owner-visible
+Students/Education billing portal. UsageDetails or a spending-limit flag is not a
+credit balance. Before apply, record the complete DEV estimate and the owner's
+funding decision, including idle PostgreSQL, Service Bus and ACA managed networking.
+The [cost projection](mvp-cost-projection.md#key-vault-incremental-scenario-2026-11-16)
+includes a partial-foundation sensitivity; it is not the actual Students bill.
+
+Resolve actual access inputs privately. For a signed-in user,
+`az ad signed-in-user show --query '{id:id,name:userPrincipalName}' -o json` obtains
+the candidate user; the owner must approve its state/admin role. Supply the approved
+values as shell variables (names/IDs are not passwords):
+
+```bash
+: "${STATE_OPERATOR_ID:?Approved state operator object UUID}"
+: "${WSL_PUBLIC_IPV4:?Approved current public IPv4 without CIDR}"
+export STATE_OPERATOR_ID WSL_PUBLIC_IPV4
+python3 - "$PRIVATE_DIR" <<'PY'
+import ipaddress, json, os, pathlib, sys, uuid
+root = pathlib.Path(sys.argv[1])
+ip = ipaddress.IPv4Address(os.environ['WSL_PUBLIC_IPV4'])
+if not ip.is_global: raise SystemExit('A public WSL egress IPv4 is required')
+for key in ('STATE_OPERATOR_ID',):
+    if uuid.UUID(os.environ[key]).int == 0: raise SystemExit('Nonzero principal required')
+values = {'REPLACE_WITH_STATE_OPERATOR_OBJECT_ID': os.environ['STATE_OPERATOR_ID'],
+          'REPLACE_WITH_POSTGRES_ADMIN_OBJECT_ID': os.environ.get('POSTGRES_ADMIN_ID', 'REPLACE_WITH_POSTGRES_ADMIN_OBJECT_ID'),
+          'REPLACE_WITH_POSTGRES_ADMIN_PRINCIPAL_NAME': os.environ.get('POSTGRES_ADMIN_NAME', 'REPLACE_WITH_POSTGRES_ADMIN_PRINCIPAL_NAME'),
+          'REPLACE_WITH_WSL_PUBLIC_IPV4': str(ip)}
+for source, target in [('bootstrap/dev/terraform.tfvars.example', 'bootstrap.tfvars'),
+                       ('environments/dev/terraform.tfvars.example', 'dev.tfvars')]:
+    text = pathlib.Path(source).read_text()
+    for marker, value in values.items(): text = text.replace(json.dumps(marker), json.dumps(value))
+    if any('REPLACE_WITH_' in line for line in text.splitlines() if not line.lstrip().startswith('#')): raise SystemExit('Unresolved operator input')
+    (root / target).write_text(text)
+PY
+```
+
+Check the actual public NAT/VPN egress, not WSL's private address; validate the
+10.50.0.0/16 allocation against `ip route` and intended Windows/VPN routes.
+The examples leave ACA, PostgreSQL, Application Insights and Static Web Apps disabled. Do not enable ACA until an allowed region has positive managed-environment quota; PostgreSQL and Insights depend on ACA. Do not enable Static Web Apps until an allowed supported region or an authorized policy change is confirmed. For other blocked capabilities, keep the desired reviewed candidate separately and
+set only that capability to null **before its first creation**; account for its
+dependents (no platform means no PostgreSQL/Insights). Never null a deployed object
+to pause billing. Do not substitute runtime-contract placeholders or create apps.
+
+## Authorized execution sequence
+
+1. **Authorize missing provider registrations**, naming the target subscription
+   and exact namespaces. Then run the following only for each approved namespace:
+
+   ```bash
+   : "${APPROVED_PROVIDER:?One explicitly authorized namespace}"
+   az provider register --subscription "$DEV_SUBSCRIPTION" --namespace "$APPROVED_PROVIDER" --wait
+   az provider show --subscription "$DEV_SUBSCRIPTION" --namespace "$APPROVED_PROVIDER" --query registrationState -o tsv
+   ```
+
+   Stop unless required registrations report `Registered`. Terraform keeps automatic
+   registration/preflight disabled. Registration grants no resource apply authority.
+
+2. **Authorize bootstrap initialization/local state custody** after verifying two
+   age recipients, two independent encrypted backup destinations, and each
+   custodian's recovery test. Use a fresh protected Terraform data directory:
+
+   ```bash
+   export TF_DATA_DIR="$PRIVATE_DIR/tfdata-bootstrap"
+   test ! -e "$PRIVATE_DIR/bootstrap.tfstate"
+   test ! -e "$TF_DATA_DIR/terraform.tfstate"
+   terraform -chdir=bootstrap/dev init -input=false -lockfile=readonly \
+     -backend-config="path=$PRIVATE_DIR/bootstrap.tfstate"
+   terraform -chdir=bootstrap/dev validate
+   ```
+
+   With a separately authenticated resource-read identity and no existing resources,
+   generate a protected plan; otherwise resolve the missing reads before proceeding:
+
+   ```bash
+   terraform -chdir=bootstrap/dev plan -input=false -lock-timeout=60s \
+     -var-file="$PRIVATE_DIR/bootstrap.tfvars" -out="$PRIVATE_DIR/bootstrap.tfplan" \
+     > "$PRIVATE_DIR/bootstrap-plan.log"
+   terraform -chdir=bootstrap/dev show -no-color "$PRIVATE_DIR/bootstrap.tfplan" > "$PRIVATE_DIR/bootstrap-review.txt"
+   sha256sum "$PRIVATE_DIR/bootstrap.tfplan"
+   ```
+
+3. Review exact names, container-only RBAC, LRS, recovery, public firewall deny,
+   Entra-only/no keys and the protected plan. **Authorize this saved bootstrap
+   plan's apply** and change to the approved apply identity without altering the
+   reviewed target/inputs/plan:
+
+   ```bash
+   terraform -chdir=bootstrap/dev apply -input=false "$PRIVATE_DIR/bootstrap.tfplan"
+   ```
+
+After switching identities, repeat the CLI subscription and tenant checks above;
+verify the selected CLI account is the approved apply principal. If changing
+identities changes the computed plan, regenerate and reauthorize.
+   Never retry a saved plan after partial apply. Preserve local state and backups.
+
+4. Verify management properties, then back up state before using the new backend.
+   `AGE_RECIPIENTS_FILE` contains both verified public recipients, one per line;
+   both backup directories must already be approved and accessible:
+
+   ```bash
+   : "${AGE_RECIPIENTS_FILE:?Verified public recipient file}"
+   : "${BACKUP_ONE:?Approved independent backup directory}"
+   : "${BACKUP_TWO:?Second approved independent backup directory}"
+   stamp=$(date -u +%Y%m%dT%H%M%SZ)
+   age -R "$AGE_RECIPIENTS_FILE" -o "$PRIVATE_DIR/bootstrap-$stamp.tfstate.age" "$PRIVATE_DIR/bootstrap.tfstate"
+   cp "$PRIVATE_DIR/bootstrap-$stamp.tfstate.age" "$BACKUP_ONE/"
+   cp "$PRIVATE_DIR/bootstrap-$stamp.tfstate.age" "$BACKUP_TWO/"
+   sha256sum "$PRIVATE_DIR/bootstrap-$stamp.tfstate.age"
+   terraform -chdir=bootstrap/dev output -json backend > "$PRIVATE_DIR/backend.json"
+   python3 - "$PRIVATE_DIR" <<'PY'
+import json, pathlib, sys
+root = pathlib.Path(sys.argv[1]); config = json.loads((root / 'backend.json').read_text())
+assert config['container_name'] == 'tfstate-dev' and config['key'] == 'dev/foundation.tfstate'
+assert config['use_azuread_auth'] is True
+(root / 'dev.tfbackend').write_text(''.join(f'{k} = {json.dumps(v)}\n' for k, v in config.items()) + 'use_cli = true\n')
+PY
+   az storage container show --account-name stpipesordev04f339b7 --name tfstate-dev --auth-mode login --query '{name:name,publicAccess:properties.publicAccess}' -o json
+   az storage account show --resource-group rg-pipesor-state-dev --name stpipesordev04f339b7 --query '{sku:sku.name,keys:allowSharedKeyAccess,publicBlob:allowBlobPublicAccess,tls:minimumTlsVersion,https:enableHttpsTrafficOnly,network:networkRuleSet}' -o json
+   az storage account blob-service-properties show --resource-group rg-pipesor-state-dev --account-name stpipesordev04f339b7 --query '{versioning:isVersioningEnabled,blobRecovery:deleteRetentionPolicy,containerRecovery:containerDeleteRetentionPolicy}' -o json
+   ```
+
+   Prove both custodians can decrypt independently, compare plaintext state hashes
+   privately, and retain encrypted backups for 90 days per ADR 004. Do not store keys
+   beside backups. Wait for scoped RBAC propagation; never enable shared keys or
+   widen the firewall to work around a 403.
+
+5. **Authorize first remote-backend initialization and state-locking operations**.
+   There is no existing workload state to migrate on a first provisioning; stop if
+   one is discovered. Do not use `-migrate-state` or copy bootstrap state into it.
+   Switch to the approved resource-read-only planning identity, then repeat the
+   tenant/subscription and CLI credential checks above. Before initialization,
+   verify that this principal has container-scoped Blob Data Contributor for
+   leases. The bootstrap example grants only `STATE_OPERATOR_ID`; if plan and
+   apply use distinct principals, include both approved object IDs in
+   `settings.principal_ids` before reviewing the bootstrap plan or establish
+   their separately authorized container grants. Management Owner alone is not
+   proof of data-plane or lease access.
+
+   ```bash
+   export TF_DATA_DIR="$PRIVATE_DIR/tfdata-dev"
+   test ! -e "$TF_DATA_DIR/terraform.tfstate"
+   [[ "$(az storage blob exists --account-name stpipesordev04f339b7 --container-name tfstate-dev --name dev/foundation.tfstate --auth-mode login --query exists -o tsv)" == false ]]
+   terraform -chdir=environments/dev init -input=false -lockfile=readonly \
+     -backend-config="$PRIVATE_DIR/dev.tfbackend"
+   terraform -chdir=environments/dev validate
+   terraform -chdir=environments/dev plan -input=false -lock-timeout=60s \
+     -var-file="$PRIVATE_DIR/dev.tfvars" -out="$PRIVATE_DIR/dev.tfplan" > "$PRIVATE_DIR/dev-plan.log"
+   terraform -chdir=environments/dev show -no-color "$PRIVATE_DIR/dev.tfplan" > "$PRIVATE_DIR/dev-review.txt"
+   sha256sum "$PRIVATE_DIR/dev.tfplan"
+   ```
+
+6. **Authorize the exact saved DEV foundation plan and apply**. Expect only the
+   workload group, selected foundation resources and their existing child resources
+   (and any child resources explicitly selected), never apps,
+   models, secret payloads or messaging entities:
+
+   Switch to the approved apply identity, repeat the tenant/subscription and
+   CLI credential checks, and verify its approved container data/lease grant.
+
+   ```bash
+   terraform -chdir=environments/dev apply -input=false "$PRIVATE_DIR/dev.tfplan"
+   terraform -chdir=environments/dev state pull > "$PRIVATE_DIR/dev.tfstate"
+   stamp=$(date -u +%Y%m%dT%H%M%SZ)
+   age -R "$AGE_RECIPIENTS_FILE" -o "$PRIVATE_DIR/dev-$stamp.tfstate.age" "$PRIVATE_DIR/dev.tfstate"
+   cp "$PRIVATE_DIR/dev-$stamp.tfstate.age" "$BACKUP_ONE/"
+   cp "$PRIVATE_DIR/dev-$stamp.tfstate.age" "$BACKUP_TWO/"
+   az resource list --resource-group rg-pipesor-dev --subscription "$DEV_SUBSCRIPTION" --query '[].{name:name,type:type,location:location}' -o json
+   az resource show --resource-group rg-pipesor-dev --resource-type Microsoft.KeyVault/vaults --name kv-pipesor-dev-04f339b7 --query 'properties.{tenant:tenantId,rbac:enableRbacAuthorization,purge:enablePurgeProtection,recovery:softDeleteRetentionInDays,network:networkAcls}' -o json
+   az resource show --resource-group rg-pipesor-dev --resource-type Microsoft.ServiceBus/namespaces --name sb-pipesor-dev-04f339b7 --query '{sku:sku,localAuth:properties.disableLocalAuth,tls:properties.minimumTlsVersion}' -o json
+   az resource show --resource-group rg-pipesor-dev --resource-type Microsoft.CognitiveServices/accounts --name ai-pipesor-dev-04f339b7 --query '{kind:kind,sku:sku,localAuth:properties.disableLocalAuth,projects:properties.allowProjectManagement}' -o json
+   ```
+
+   Compare each resource's effective security, SKU, recovery and network metadata
+   with the reviewed plan. When ACA is later enabled, inspect its managed resources and billable LB/IP meters.
+   A successful apply does not prove PostgreSQL SQL access, private routing, GitHub,
+   Key Vault Secrets access or application integration. Keep applications disabled
+   until their own runtime/readiness and deployment authorization.
+
+## Failure recovery and cost control
+
+On partial failure, stop and preserve state, current protected logs and encrypted
+backups. Compare `terraform state list` with read-only Azure inventory. Correct only
+verified input/provider restrictions, generate a fresh plan and obtain a new apply
+approval. Never delete a group, import an orphan, force-unlock, restore old state or
+retry a refresh credential as an automatic recovery. Unexpected resources require
+an explicitly authorized ownership/import decision. Old state is not resource rollback.
+
+Use the actual offer-supported cost portal with filters for `rg-pipesor-dev`,
+`rg-pipesor-state-dev` and ACA's managed group; include account-wide Service Bus
+base charges. Review daily after first creation and after workload activation.
+An empty UsageDetails response is not proof of zero cost. PostgreSQL stop/start
+is a separately approved temporary option: storage remains billed and the service
+restarts after seven days. ACA min replicas are irrelevant before apps exist;
+empty custom-VNet environment networking may still be charged. No universal pause
+command exists. Retirement requires a fresh reviewed destroy plan and explicit
+scope approval; preserve state/recovery copies and account for Key Vault's purge
+protection and database loss before authorizing it.
+
+Sources: [Azure naming rules](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules),
+[AVM naming 0.3.0](https://registry.terraform.io/modules/Azure/avm-utl-naming/azure/0.3.0),
+[Terraform local backend](https://developer.hashicorp.com/terraform/language/backend/local),
+[Azure Blob backend and CLI authentication](https://developer.hashicorp.com/terraform/language/backend/azurerm),
+[provider registrations](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types),
+[Key Vault check-name](https://learn.microsoft.com/en-us/rest/api/keyvault/keyvault/vaults/check-name-availability?view=rest-keyvault-keyvault-2024-11-01),
+[PostgreSQL check-name](https://learn.microsoft.com/en-us/rest/api/postgresql/name-availability/execute?view=rest-postgresql-2024-08-01),
+[Service Bus check-name](https://learn.microsoft.com/en-us/rest/api/servicebus/controlplane/namespaces/check-name-availability?view=rest-servicebus-controlplane-2024-01-01),
+[PostgreSQL stop behavior](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/how-to-stop-start-server).

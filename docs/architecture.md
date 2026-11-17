@@ -5,9 +5,9 @@ optional shared MVP container platform, Service Bus namespace, PostgreSQL server
 Application Insights component, Microsoft Foundry account/project, Static Web Apps Free site and Ingestion Key Vault capability per environment; it is not an Azure landing zone. Provisioning and backend initialization remain separately authorized; ADR 005 records the administrative source-retirement rationale.
 The academic MVP selects only `dev` in Ramiro's temporary Azure for Students
 subscription/UPC tenant; [ADR 004](adr-004-mvp-state-and-deployment.md) records the
-verified target, custody and deployment gates. No infrastructure may be deployed
-until application services are implemented, integrated locally and validated,
-followed by explicit deployment authorization. Other environments remain unprovisioned.
+verified target, custody and deployment gates. ADR 005 permits separately authorized
+DEV foundation provisioning before local application integration; application
+deployment retains its own readiness gate. Other environments remain unprovisioned.
 [ADR 005](adr-005-academic-mvp-scope-and-cost-governance.md) selects one tenant and one temporary Students subscription for DEV. Each environment retains its explicit subscription input and can later use a different subscription without shared-module redesign. Separate tenants are a future governance choice. Metadata locations are pending.
 Workload regions and network allocations require explicit inputs. Service capacity,
 identity configuration and delivery contracts remain undecided. The Azure service selections and their limits are
@@ -45,7 +45,7 @@ The intended state store is Azure Blob Storage with a unique key per environment
 and component, locking, recovery protection and scoped Entra ID access. Target
 GitHub Actions OIDC for MVP deployments using ADR 004's proposed Debian VirtualBox
 runner and accepted procedural dev approval model. Activation still requires
-application readiness, verified access/network/isolation and explicit authorization. Use Jhon's developer identity for authorized WSL bootstrap
+verified access/network/isolation and explicit authorization; application deployment also requires application readiness. Use Jhon's developer identity for authorized WSL bootstrap
 and preparation; avoid storage keys and long-lived client secrets. Separate production access from
 nonproduction. State can contain secrets even when outputs are marked sensitive.
 Backend bootstrap is a separately authorized task, outside the workload state it

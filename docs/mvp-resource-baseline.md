@@ -23,9 +23,8 @@ Share infrastructure among services within an environment. Preserve separate
 [ADR 001](adr-001-branching-and-promotion.md). Four roots do not require four
 continuously provisioned workload stacks; promotion prerequisites still apply.
 [ADR 004](adr-004-mvp-state-and-deployment.md) selects **only dev** for the current
-academic MVP. No infrastructure, including bootstrap and subscription controls,
-may be deployed until services are implemented, integrated locally and validated,
-then explicitly authorized.
+academic MVP. ADR 005 permits separately authorized DEV foundation provisioning
+before local integration; application deployment retains its readiness gate.
 
 The temporary target is now Ramiro's Active Azure for Students subscription in
 the UPC tenant, as recorded in ADR 004; earlier expected PAYG funding is superseded.

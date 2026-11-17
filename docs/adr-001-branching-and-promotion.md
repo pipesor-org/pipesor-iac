@@ -6,8 +6,9 @@ This records the target strategy; it creates no roots, state stores, identities,
 repository protections or deployment workflows.
 
 MVP refinement (2026-11-06): [ADR 004](adr-004-mvp-state-and-deployment.md) selects
-dev-only deployment in temporary Azure for Students/UPC infrastructure after
-application implementation and local integration/validation. It targets Actions
+dev-only deployment in temporary Azure for Students/UPC infrastructure. ADR 005's
+foundation readiness addendum allows separately authorized foundation provisioning
+before application integration; application deployment still requires it. It targets Actions
 OIDC for MVP workload deployment on Jhon's proposed Debian VirtualBox runner,
 subject to readiness/access/network verification and separate activation approval.
 GitHub Free dev approvals are procedural: Ramiro authorizes initial access/scope;
