@@ -12,20 +12,22 @@ version, Azure CLI, Python 3, `age` and a private Bash terminal in WSL2.
 
 Use the DEV examples beside their existing roots. The subscription and tenant
 come from ADR 004. `southcentralus` is the proposed common region; each selected resource's
-subscription-specific availability must pass the checks below. Current subscription policy permits this region. ACA quota is zero in all permitted regions, so ACA, PostgreSQL and Application Insights remain disabled. The advertised Static Web Apps regions do not intersect permitted locations, so static hosting remains disabled. The region, address
+subscription-specific availability must pass the checks below. The candidate enables ACA, PostgreSQL and Application Insights; the post-registration
+ACA quota checks below must pass before generating its real plan. Static hosting starts disabled until a supported region
+satisfies the subscription's current location policy. The region, address
 allocation and operator grants must be included in the apply authorization.
 
 | Input | Selected preparation value and reason |
 | --- | --- |
 | State account | `stpipesordev04f339b7`, Standard LRS; private `tfstate-dev`, key `dev/foundation.tfstate`; 30-day blob/container recovery and versioning. |
 | Workload/state groups | Existing AVM names `rg-pipesor-dev` / `rg-pipesor-state-dev`. |
-| Deferred VNet / ACA subnet | `10.50.0.0/16` / `10.50.1.0/24`; dedicated PostgreSQL subnet `10.50.2.0/28`; check against intended VPN/peering routes before approval. |
-| Deferred workspace | Existing platform name; 30-day retention, 0.1 GB/day ingestion cap. Cap is delayed and is not a hard spending limit. |
-| Service Bus / deferred PostgreSQL | `sb-pipesor-dev-04f339b7` Standard / `pg-pipesor-dev-04f339b7` PG17 B2s, 32 GiB, Entra-only, seven-day local backups. |
+| VNet / ACA subnet | `10.50.0.0/16` / `10.50.1.0/24`; dedicated PostgreSQL subnet `10.50.2.0/28`; check against intended VPN/peering routes before approval. |
+| Workspace | Existing platform name; 30-day retention, 0.1 GB/day ingestion cap. Cap is delayed and is not a hard spending limit. |
+| Service Bus / PostgreSQL | `sb-pipesor-dev-04f339b7` Standard / `pg-pipesor-dev-04f339b7` PG17 B2s, 32 GiB, Entra-only, seven-day local backups. |
 | Foundry | `ai-pipesor-dev-04f339b7` AIServices S0 account, `pipesor-dev` project; no deployment or consumption selected. |
 | Deferred Static Web App / Key Vault | `swa-pipesor-dev-04f339b7` Free / `kv-pipesor-dev-04f339b7` Standard, protected 30-day recovery; no credentials initialized. |
 | State/operator access | Explicitly approved operator Entra object ID and WSL public egress IPv4; obtain anew below. |
-| Deferred PostgreSQL administrator | Recommend the approved DEV operator for first creation, then an approved group when one actually exists. Supply its real object ID/name; do not invent a group. |
+| PostgreSQL administrator | Recommend the approved DEV operator for first creation, then an approved group when one actually exists. Supply its real object ID/name; do not invent a group. |
 
 Naming audit: AVM naming **0.3.0** is retained for group/platform/telemetry names
 whose scope already supplies uniqueness. Explicit global-service inputs retain
@@ -96,7 +98,7 @@ Entra administrator is an explicit permission boundary. Runtime data access is n
 implied by subscription management rights. A plan identity must have resource
 reads only; backend Blob Data Contributor/lease permissions are a separate scope.
 
-Before enabling deferred capabilities, confirm B2s/PG17/32-GiB eligibility, ACA managed-environment quota and SWA Free availability for this exact offer. Confirm Foundry AIServices S0/project support before selecting it. Public
+Before planning, confirm B2s/PG17/32-GiB eligibility and ACA managed-environment quota. Before enabling deferred SWA, confirm Free availability in a policy-allowed region. Confirm Foundry AIServices S0/project support before selecting it. Public
 provider locations do not prove these. Inspect global names with documented
 nonmutating check-name APIs (POST validates a name and creates no object):
 
@@ -115,7 +117,7 @@ Students/Education billing portal. UsageDetails or a spending-limit flag is not 
 credit balance. Before apply, record the complete DEV estimate and the owner's
 funding decision, including idle PostgreSQL, Service Bus and ACA managed networking.
 The [cost projection](mvp-cost-projection.md#key-vault-incremental-scenario-2026-11-16)
-includes a partial-foundation sensitivity; it is not the actual Students bill.
+includes a roughly USD 100/month full-foundation sensitivity before state, Key Vault, telemetry and egress usage. This selected ACA/PostgreSQL profile must use that full sensitivity, not the earlier partial USD 10/month scenario; neither is the actual Students bill.
 
 Resolve actual access inputs privately. For a signed-in user,
 `az ad signed-in-user show --query '{id:id,name:userPrincipalName}' -o json` obtains
@@ -124,18 +126,21 @@ values as shell variables (names/IDs are not passwords):
 
 ```bash
 : "${STATE_OPERATOR_ID:?Approved state operator object UUID}"
+: "${POSTGRES_ADMIN_ID:?Approved PostgreSQL administrator object UUID}"
+: "${POSTGRES_ADMIN_NAME:?Exact administrator principal name}"
 : "${WSL_PUBLIC_IPV4:?Approved current public IPv4 without CIDR}"
-export STATE_OPERATOR_ID WSL_PUBLIC_IPV4
+export STATE_OPERATOR_ID POSTGRES_ADMIN_ID POSTGRES_ADMIN_NAME WSL_PUBLIC_IPV4
 python3 - "$PRIVATE_DIR" <<'PY'
 import ipaddress, json, os, pathlib, sys, uuid
 root = pathlib.Path(sys.argv[1])
 ip = ipaddress.IPv4Address(os.environ['WSL_PUBLIC_IPV4'])
 if not ip.is_global: raise SystemExit('A public WSL egress IPv4 is required')
-for key in ('STATE_OPERATOR_ID',):
+for key in ('STATE_OPERATOR_ID', 'POSTGRES_ADMIN_ID'):
     if uuid.UUID(os.environ[key]).int == 0: raise SystemExit('Nonzero principal required')
+if not os.environ['POSTGRES_ADMIN_NAME'].strip(): raise SystemExit('PostgreSQL administrator name required')
 values = {'REPLACE_WITH_STATE_OPERATOR_OBJECT_ID': os.environ['STATE_OPERATOR_ID'],
-          'REPLACE_WITH_POSTGRES_ADMIN_OBJECT_ID': os.environ.get('POSTGRES_ADMIN_ID', 'REPLACE_WITH_POSTGRES_ADMIN_OBJECT_ID'),
-          'REPLACE_WITH_POSTGRES_ADMIN_PRINCIPAL_NAME': os.environ.get('POSTGRES_ADMIN_NAME', 'REPLACE_WITH_POSTGRES_ADMIN_PRINCIPAL_NAME'),
+          'REPLACE_WITH_POSTGRES_ADMIN_OBJECT_ID': os.environ['POSTGRES_ADMIN_ID'],
+          'REPLACE_WITH_POSTGRES_ADMIN_PRINCIPAL_NAME': os.environ['POSTGRES_ADMIN_NAME'],
           'REPLACE_WITH_WSL_PUBLIC_IPV4': str(ip)}
 for source, target in [('bootstrap/dev/terraform.tfvars.example', 'bootstrap.tfvars'),
                        ('environments/dev/terraform.tfvars.example', 'dev.tfvars')]:
@@ -148,7 +153,7 @@ PY
 
 Check the actual public NAT/VPN egress, not WSL's private address; validate the
 10.50.0.0/16 allocation against `ip route` and intended Windows/VPN routes.
-The examples leave ACA, PostgreSQL, Application Insights and Static Web Apps disabled. Do not enable ACA until an allowed region has positive managed-environment quota; PostgreSQL and Insights depend on ACA. Do not enable Static Web Apps until an allowed supported region or an authorized policy change is confirmed. For other blocked capabilities, keep the desired reviewed candidate separately and
+The example selects ACA, PostgreSQL and Application Insights but leaves Static Web Apps disabled. If the ACA quota gate fails, set `container_platform` and `postgresql` to null and `application_insights_enabled` to false before the first plan. Do not enable ACA until an allowed region has positive managed-environment quota; PostgreSQL and Insights depend on ACA. Do not enable Static Web Apps until an allowed supported region or an authorized policy change is confirmed. For other blocked capabilities, keep the desired reviewed candidate separately and
 set only that capability to null **before its first creation**; account for its
 dependents (no platform means no PostgreSQL/Insights). Never null a deployed object
 to pause billing. Do not substitute runtime-contract placeholders or create apps.
@@ -166,6 +171,57 @@ to pause billing. Do not substitute runtime-contract placeholders or create apps
 
    Stop unless required registrations report `Registered`. Terraform keeps automatic
    registration/preflight disabled. Registration grants no resource apply authority.
+
+   If all six missing DEV registrations have been explicitly authorized for this
+   subscription, the exact batch is:
+
+   ```bash
+   for provider in Microsoft.App Microsoft.Storage Microsoft.DBforPostgreSQL Microsoft.ServiceBus Microsoft.CognitiveServices Microsoft.KeyVault; do
+     az provider register --subscription "$DEV_SUBSCRIPTION" --namespace "$provider" --wait
+     [[ "$(az provider show --subscription "$DEV_SUBSCRIPTION" --namespace "$provider" --query registrationState -o tsv)" == Registered ]]
+   done
+   ```
+
+   **Recheck ACA after registration before classifying the subscription.** A zero
+   value obtained before registration does not prove either permanent offer
+   exclusion or that registration will fix it. Read current regional usage:
+
+   ```bash
+   export DEV_LOCATION=southcentralus
+   az rest --method get --url "https://management.azure.com/subscriptions/$DEV_SUBSCRIPTION/providers/Microsoft.App/locations/$DEV_LOCATION/usages?api-version=2025-07-01" \
+     --query "value[?name.value=='ManagedEnvironmentCount'].{quota:name.value,current:currentValue,limit:limit}" -o json
+   ```
+
+   A successful response must contain the expected quota item, and
+   `limit - current` must allow at least one environment. An empty list, 403 or
+   unsupported API is a verification gap, not a positive quota result. Recheck
+   region policy and provider availability too; positive quota does not override
+   a location deny policy or prove regional capacity.
+
+   If the post-registration limit remains zero, obtain explicit authorization
+   for a **subscription quota request**, then open the
+   [Azure Quota Management System](https://ms.portal.azure.com/#view/Microsoft_Azure_Capacity/QuotaMenuBlade/~/myQuotas).
+   Select provider **Azure Container Apps**, this DEV subscription,
+   **Managed Environment Count** in the approved region and request a new total
+   limit of **1**. Record the request ID and result. This subscription quota does
+   not require an existing environment; the separate environment-core quota does.
+   If unavailable or rejected for the offer, escalate the same subscription,
+   region, quota name, registered-provider status and zero-quota response to
+   Microsoft Support and request explicit eligibility/remediation confirmation.
+   Do not create a dummy environment, request unrelated compute quota or infer
+   ACA eligibility from Azure Container Instances restrictions.
+
+   After approval, repeat the read-only quota command. If Microsoft confirms the
+   offer cannot receive usable ACA quota, an owner-approved funded subscription
+   or offer change is the remaining path; do not replace mandatory ACA or change
+   the environment/state architecture to bypass this gate. Registration, quota
+   submission and subscription changes are separately authorized actions.
+
+   Once the count gate passes, the selected `container_platform` candidate can
+   proceed to plan. PostgreSQL and Insights use its existing VNet/workspace
+   after their own SKU/admin checks.
+   Keep all dependent locations aligned, regenerate a fresh plan and obtain apply
+   authorization. Foundation readiness still does not activate applications.
 
 2. **Authorize bootstrap initialization/local state custody** after verifying two
    age recipients, two independent encrypted backup destinations, and each
@@ -196,13 +252,14 @@ to pause billing. Do not substitute runtime-contract placeholders or create apps
    plan's apply** and change to the approved apply identity without altering the
    reviewed target/inputs/plan:
 
+   Before applying, repeat the CLI subscription and tenant checks above and
+   verify the selected account is the approved apply principal. If changing
+   identities changes the computed plan, regenerate and reauthorize.
+
    ```bash
    terraform -chdir=bootstrap/dev apply -input=false "$PRIVATE_DIR/bootstrap.tfplan"
    ```
 
-After switching identities, repeat the CLI subscription and tenant checks above;
-verify the selected CLI account is the approved apply principal. If changing
-identities changes the computed plan, regenerate and reauthorize.
    Never retry a saved plan after partial apply. Preserve local state and backups.
 
 4. Verify management properties, then back up state before using the new backend.
@@ -279,6 +336,7 @@ PY
    az resource list --resource-group rg-pipesor-dev --subscription "$DEV_SUBSCRIPTION" --query '[].{name:name,type:type,location:location}' -o json
    az resource show --resource-group rg-pipesor-dev --resource-type Microsoft.KeyVault/vaults --name kv-pipesor-dev-04f339b7 --query 'properties.{tenant:tenantId,rbac:enableRbacAuthorization,purge:enablePurgeProtection,recovery:softDeleteRetentionInDays,network:networkAcls}' -o json
    az resource show --resource-group rg-pipesor-dev --resource-type Microsoft.ServiceBus/namespaces --name sb-pipesor-dev-04f339b7 --query '{sku:sku,localAuth:properties.disableLocalAuth,tls:properties.minimumTlsVersion}' -o json
+   az postgres flexible-server show --resource-group rg-pipesor-dev --name pg-pipesor-dev-04f339b7 --query '{version:version,sku:sku,storage:storage,auth:authConfig,backup:backup,network:network}' -o json
    az resource show --resource-group rg-pipesor-dev --resource-type Microsoft.CognitiveServices/accounts --name ai-pipesor-dev-04f339b7 --query '{kind:kind,sku:sku,localAuth:properties.disableLocalAuth,projects:properties.allowProjectManagement}' -o json
    ```
 
@@ -313,6 +371,8 @@ Sources: [Azure naming rules](https://learn.microsoft.com/en-us/azure/azure-reso
 [Terraform local backend](https://developer.hashicorp.com/terraform/language/backend/local),
 [Azure Blob backend and CLI authentication](https://developer.hashicorp.com/terraform/language/backend/azurerm),
 [provider registrations](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types),
+[ACA quotas](https://learn.microsoft.com/en-us/azure/container-apps/quotas),
+[ACA quota requests](https://learn.microsoft.com/en-us/azure/container-apps/quota-requests),
 [Key Vault check-name](https://learn.microsoft.com/en-us/rest/api/keyvault/keyvault/vaults/check-name-availability?view=rest-keyvault-keyvault-2024-11-01),
 [PostgreSQL check-name](https://learn.microsoft.com/en-us/rest/api/postgresql/name-availability/execute?view=rest-postgresql-2024-08-01),
 [Service Bus check-name](https://learn.microsoft.com/en-us/rest/api/servicebus/controlplane/namespaces/check-name-availability?view=rest-servicebus-controlplane-2024-01-01),
