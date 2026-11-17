@@ -10,7 +10,7 @@ Terraform foundation for Pipesor's planned Microsoft Azure infrastructure, with 
   manages secret payloads. The [runbook](docs/key-vault-runbook.md) covers separate
   authorization and the Ingestion credential-composition handoff.
 
-- [ADR 004](docs/adr-004-mvp-state-and-deployment.md) selects **dev only** for the academic MVP in Ramiro's temporary Azure for Students/UPC tenant. Deployment waits for implemented, locally integrated and validated services plus explicit authorization. GitHub Actions OIDC on Jhon's proposed Debian VirtualBox VM is the deployment target, with procedural dev approvals on GitHub Free. Capacity/isolation/network, Azure access and activation remain unverified.
+- [ADR 004](docs/adr-004-mvp-state-and-deployment.md) selects **dev only** for the academic MVP in Ramiro's temporary Azure for Students/UPC tenant. ADR 005 permits separately authorized foundation provisioning before local application integration; application deployment still requires integrated and validated services. GitHub Actions OIDC on Jhon's proposed Debian VirtualBox VM is the deployment target, with procedural dev approvals on GitHub Free. Capacity/isolation/network, Azure access and activation remain unverified.
 
 - [Static Web Apps Free](docs/mvp-resource-baseline.md#static-web-apps-free-hosting) is opt-in per environment for a public static shell only. Authentication, domains and delivery remain separate.
 
@@ -47,6 +47,9 @@ bun run setup:hooks
 Hook activation is required once per clone. For existing clones, inspect `git config --show-origin --get-all core.hooksPath`. If the local value is the former `.githooks`, remove only that value with `git config --local --unset core.hooksPath`, then rerun hook setup. Resolve other hooks-path configurations deliberately; do not change global Git settings or edit generated hooks. Optional `lefthook-local.yml` overrides are ignored by Git.
 
 ## Verification
+
+For first DEV foundation preparation and its explicit authorization gates, use
+the [DEV provisioning runbook](docs/dev-provisioning.md).
 
 Run the repository's baseline checks:
 
@@ -120,7 +123,7 @@ Codex is optional for editing documentation and running local checks. For infras
 
 ## Promotion and authorization
 
-The academic MVP provisions only `dev` after ADR 004 readiness checks and separate
+The academic MVP provisions only `dev` after infrastructure readiness checks and separate
 activation authorization. Ramiro approves initial Azure access/scope; Jhon reviews
 and explicitly authorizes each subsequent dev plan. GitHub Free/private does not
 enforce independent deployment approval; the MVP accepts procedural controls.

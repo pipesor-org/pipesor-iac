@@ -103,8 +103,9 @@ period is extended to telemetry, audit, corpus or configuration.
 
 Current sequencing is refined by [ADR 004](adr-004-mvp-state-and-deployment.md):
 only dev is selected in temporary Azure for Students/UPC infrastructure, and
-implementation, local integration and validation of the application services block
-all provisioning. State-bootstrap configuration can be prepared and mocked locally;
+ADR 005 permits separately authorized foundation provisioning before application
+integration; application deployment still requires integration and validation.
+State-bootstrap configuration can be prepared and mocked locally;
 Azure bootstrap itself requires later explicit authorization, pending access and
 deployment inputs. Actions OIDC dev deployment uses ADR 004's accepted procedural
 approval model; verify the Debian VirtualBox runner, network, encryption/recovery

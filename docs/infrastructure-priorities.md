@@ -67,9 +67,8 @@ it does not close PD-035 or authorize a placeholder application.
 ## Boundary with the state/bootstrap workstream
 
 Under [ADR 004](adr-004-mvp-state-and-deployment.md), only dev is selected for the
-academic MVP. No infrastructure deployment, including bootstrap or subscription
-controls, may proceed before application implementation and local integration/
-validation evidence, followed by explicit target/action authorization. The other
+academic MVP. ADR 005 permits separately authorized foundation provisioning before
+local application integration; application deployment retains its readiness gate. The other
 roots remain available for future commissioning, not current provisioning.
 
 Leave bootstrap/state-store code, backend declarations, state custody/access and

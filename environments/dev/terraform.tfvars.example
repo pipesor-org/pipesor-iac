@@ -1,50 +1,56 @@
-# Temporary Azure for Students / UPC target verified by the owner on 2026-11-06.
-# Dev only; no deployment before local application integration and explicit authorization.
-# Replace with reviewed environment values; these placeholders are not deployment inputs.
+# Candidate DEV foundations; this file authorizes no Azure operation.
+# Resolve the operator marker and feasibility gates in docs/dev-provisioning.md.
 subscription_id = "04f339b7-f969-4e17-801c-da6e81e78ffd"
-location        = "<approved-azure-region-code>"
+location        = "southcentralus"
 
-# Keep null until this environment is explicitly selected for platform provisioning.
 container_platform = null
-# Replace every placeholder with reviewed values to opt in:
+# Deferred candidate; verify policy/quota before enabling.
 # container_platform = {
-#   location = "<approved-workload-region>"
-#   vnet_address_prefix = "<approved-private-vnet-cidr>"
-#   infrastructure_subnet_prefix = "<approved-dedicated-aca-subnet-cidr>"
-#   log_retention_days = <approved-integer-30-to-730>
-#   log_daily_cap_gb = <approved-positive-ingestion-limit>
+#   location                     = "southcentralus"
+#   vnet_address_prefix          = "10.50.0.0/16"
+#   infrastructure_subnet_prefix = "10.50.1.0/24"
+#   log_retention_days           = 30
+#   log_daily_cap_gb             = 0.1
 # }
-
-# Opt in only with reviewed values; namespace names must be globally available and distinct per environment.
-service_bus = null
-# service_bus = {
-#   namespace_name = "<approved-globally-unique-namespace-name>"
-#   location       = "<approved-workload-region>"
-# }
-
-# Requires container_platform; replace all values with reviewed environment inputs.
+service_bus = {
+  namespace_name = "sb-pipesor-dev-04f339b7"
+  location       = "southcentralus"
+}
 postgresql = null
+# Deferred candidate; verify policy/quota before enabling.
 # postgresql = {
-#   server_name = "<globally-available-server-name>"
-#   location = "<same-region-as-platform>"
-#   subnet_prefix = "<dedicated-postgresql-subnet-cidr>"
-#   tenant_id = "0e0cb060-09ad-49f5-a005-68b9b49aa1f6"
+#   server_name   = "pg-pipesor-dev-04f339b7"
+#   location      = "southcentralus"
+#   subnet_prefix = "10.50.2.0/28"
+#   tenant_id     = "0e0cb060-09ad-49f5-a005-68b9b49aa1f6"
 #   administrator = {
-#     object_id = "<entra-administrator-object-uuid>"
-#     principal_name = "<entra-administrator-name>"
-#     principal_type = "<Group-User-or-ServicePrincipal>"
+#     object_id      = "REPLACE_WITH_POSTGRES_ADMIN_OBJECT_ID"
+#     principal_name = "REPLACE_WITH_POSTGRES_ADMIN_PRINCIPAL_NAME"
+#     principal_type = "User"
 #   }
 # }
-
-# Requires container_platform; shares its workspace/location. No app instrumentation is configured.
 application_insights_enabled = false
-
-# Optional public Entra-only Foundry foundation; placeholders are not deployment inputs.
-# foundry = {
-#   account_name = "replace-with-globally-available-account-name"
-#   project_name = "pipesor-dev"
-#   location     = "replace-with-approved-region"
+foundry = {
+  account_name = "ai-pipesor-dev-04f339b7"
+  project_name = "pipesor-dev"
+  location     = "southcentralus"
+}
+static_web_app = null
+# Deferred candidate; verify policy/quota before enabling.
+# static_web_app = {
+#   name     = "swa-pipesor-dev-04f339b7"
+#   location = "southcentralus"
 # }
+key_vault = {
+  app_material_name    = "kv-pipesor-dev-04f339b7"
+  location             = "southcentralus"
+  tenant_id            = "0e0cb060-09ad-49f5-a005-68b9b49aa1f6"
+  allowed_public_ipv4s = ["REPLACE_WITH_WSL_PUBLIC_IPV4"]
+  # No material, data-plane grants or optional human custody before its own activation.
+}
+# This handoff creates no resources and is unnecessary for foundation provisioning.
+rag_runtime_contract = null
+
 # RAG v0.1 handoff only; requires platform, Foundry and PostgreSQL opt-ins.
 # Supplying these identifiers does not create identities, app roles, assignments, model deployments or SQL grants.
 # rag_runtime_contract = {
@@ -58,32 +64,4 @@ application_insights_enabled = false
 #   rag_runtime_principal_id     = "<rag-system-identity-object-uuid>"
 #   rag_import_principal_id      = "<authorized-importer-object-uuid>"
 #   rag_migration_principal_id   = "<authorized-migrator-object-uuid>"
-# }
-
-
-# Optional Free public static hosting; no application content or authentication.
-# static_web_app = {
-#   name = "pipesor-dev-web"
-#   location = "replacewithregion"
-# }
-
-# Optional Key Vault: public endpoint restricted to approved egress IPv4s and,
-# when configured, this environment's ACA subnet via a KeyVault service endpoint.
-# No secret values are accepted or managed by Terraform.
-key_vault = null
-# key_vault = {
-#   app_material_name    = "<globally-available-app-material-vault-name>"
-#   location             = "<approved-workload-region>"
-#   tenant_id            = "<approved-entra-tenant-uuid>"
-#   allowed_public_ipv4s = ["<approved-wsl-public-egress-ipv4>/32"]
-#   app_material_readers = {
-#     developer = { object_id = "<entra-developer-object-uuid>", principal_type = "User" }
-#   }
-#   # Omit custody until human OAuth/PKCE integration is selected for execution.
-#   # custody = {
-#   #   name = "<different-globally-available-custody-vault-name>"
-#   #   principals = {
-#   #     ingestion = { object_id = "<system-assigned-identity-object-uuid>", principal_type = "ServicePrincipal" }
-#   #   }
-#   # }
 # }

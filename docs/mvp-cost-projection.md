@@ -18,6 +18,25 @@ subscription controls are retired from source; DEV state storage remains require
 
 ## Key Vault incremental scenario (2026-11-16)
 
+For the partial DEV candidate in [the provisioning runbook](dev-provisioning.md),
+ACA, PostgreSQL, Application Insights and Static Web Apps are disabled. A public
+USD PAYG sensitivity is approximately $10/month for Service Bus Standard, plus
+state storage/transactions and Key Vault operations. Foundry has no model
+deployments or inference in this scope. This is not a complete bill or evidence
+of Students credit, billing currency or remaining balance. The
+[Retail Prices API](https://prices.azure.com/api/retail/prices) gives South Central
+US Hot LRS state storage at $0.0184/GB-month, writes at $0.05/10,000 and reads
+at $0.004/10,000. Reprice and estimate actual usage before provisioning.
+
+If the blocked full foundation becomes available, South Central US PostgreSQL
+B2s at $0.0816/hour and 32 GB at $0.138/GB-month give about $63.98/month at
+730 hours, excluding backup overages. Adding approximately $10 Service Bus,
+$0.50 private DNS and an illustrative $25.55 ACA managed-networking allowance
+gives roughly $100/month before state, Key Vault, telemetry, egress and taxes.
+The networking allowance assumes two public IPs and a billable load-balancer rule;
+verify actual regional meters and rule usage. This is a future sensitivity,
+not the price of the partial candidate.
+
 The [Key Vault capability](key-vault-integration.md#network-and-cost-decision)
 uses Standard Secrets with operation billing and no fixed per-vault Secrets
 charge in the consulted retail model. Microsoft's
