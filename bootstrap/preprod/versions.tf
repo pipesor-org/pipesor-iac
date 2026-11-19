@@ -3,7 +3,7 @@ terraform {
   required_providers {
     azapi = {
       source  = "Azure/azapi"
-      version = "= 2.9.0"
+      version = "= 2.11.0"
     }
   }
   # Bootstrap cannot store its initial state in resources that it has yet to create.

@@ -18,6 +18,7 @@ postgresql = {
   server_name   = "pg-pipesor-dev-04f339b7"
   location      = "westus3"
   subnet_prefix = "10.50.2.0/28"
+  sku           = { name = "Standard_D2s_v3", tier = "GeneralPurpose" }
   tenant_id     = "0e0cb060-09ad-49f5-a005-68b9b49aa1f6"
   administrator = {
     object_id      = "REPLACE_WITH_POSTGRES_ADMIN_OBJECT_ID"

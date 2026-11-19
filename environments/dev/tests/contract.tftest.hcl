@@ -129,6 +129,7 @@ run "opt_in_postgresql_contract" {
       server_name   = "test-pipesor-dev-pg"
       location      = "workloadregion"
       subnet_prefix = "10.50.2.0/28"
+      sku           = { name = "Standard_D2s_v3", tier = "GeneralPurpose" }
       tenant_id     = "11111111-1111-1111-1111-111111111111"
       administrator = { object_id = "22222222-2222-2222-2222-222222222222", principal_name = "test-admins", principal_type = "Group" }
     }

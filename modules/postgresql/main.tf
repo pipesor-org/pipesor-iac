@@ -31,7 +31,7 @@ resource "azapi_resource" "server" {
   location  = var.configuration.location
   tags      = { environment = var.environment }
   body = {
-    sku = { name = "Standard_B2s", tier = "Burstable" }
+    sku = var.configuration.sku
     properties = {
       createMode       = "Default"
       version          = "17"
@@ -57,6 +57,8 @@ resource "azapi_resource" "administrator" {
     principalType = var.configuration.administrator.principal_type
     tenantId      = var.configuration.tenant_id
   } }
+  # Finish the server configuration write before Azure checks Entra admin accessibility.
+  depends_on = [azapi_update_resource.extensions]
   lifecycle { replace_triggered_by = [azapi_resource.server] }
 }
 resource "azapi_update_resource" "extensions" {

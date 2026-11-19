@@ -85,16 +85,13 @@ actual approved execution network; successful ARM provisioning is insufficient.
 ## Bootstrap state custody and authorization
 
 These roots explicitly use the local backend because the store does not exist yet.
-Jhon is the primary custodian/operator; Ramiro is backup custodian and subscription
-owner/initial access authorizer, not the routine executor. Before real initialization,
-choose a protected state path outside the checkout on encrypted storage with
-restricted file permissions. Maintain encrypted backups in Jhon's OneDrive Personal
-and independent external storage. Encrypt before upload/copy; keep decryption
-material separate. Use age encryption to both verified public recipients for
-independent Jhon/Ramiro recovery and retain encrypted backups for an initial 90 days;
-verify both custodians' decryption and integrity checks. Retain local backup state too. Never put bootstrap state, saved plans,
-backend metadata or credentials in Git. An unbacked-up laptop or temporary runner
-is insufficient custody.
+For DEV, Jhon is the authorized operator and state custodian. His existing DEV
+Owner session may plan the initial bootstrap. Prepare a mode-700 working
+directory on BitLocker-protected storage outside Git and one independent
+encrypted backup destination. Verify recovery using Jhon's age identity, and
+retain encrypted backups for an initial 90 days. Keep keys separate from
+backups and state, saved plans and credentials out of Git. See the
+[owner-directed DEV update](adr-004-mvp-state-and-deployment.md#owner-directed-dev-custody-update-2026-11-19).
 
 After each approved apply, back up the corresponding current state independently
 and record non-sensitive verification evidence. Target recovery is 24–48 hours;
