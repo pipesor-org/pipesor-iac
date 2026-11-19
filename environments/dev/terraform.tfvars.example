@@ -1,10 +1,10 @@
 # Candidate DEV foundations; this file authorizes no Azure operation.
 # Resolve the operator/admin markers and feasibility gates in docs/dev-provisioning.md.
 subscription_id = "04f339b7-f969-4e17-801c-da6e81e78ffd"
-location        = "southcentralus"
+location        = "westus3"
 
 container_platform = {
-  location                     = "southcentralus"
+  location                     = "westus3"
   vnet_address_prefix          = "10.50.0.0/16"
   infrastructure_subnet_prefix = "10.50.1.0/24"
   log_retention_days           = 30
@@ -12,11 +12,11 @@ container_platform = {
 }
 service_bus = {
   namespace_name = "sb-pipesor-dev-04f339b7"
-  location       = "southcentralus"
+  location       = "westus3"
 }
 postgresql = {
   server_name   = "pg-pipesor-dev-04f339b7"
-  location      = "southcentralus"
+  location      = "westus3"
   subnet_prefix = "10.50.2.0/28"
   tenant_id     = "0e0cb060-09ad-49f5-a005-68b9b49aa1f6"
   administrator = {
@@ -25,25 +25,27 @@ postgresql = {
     principal_type = "User"
   }
 }
-application_insights_enabled = true
+application_insights_enabled = false
 foundry = {
   account_name = "ai-pipesor-dev-04f339b7"
   project_name = "pipesor-dev"
-  location     = "southcentralus"
+  location     = "westus3"
 }
 static_web_app = null
 # Deferred candidate; verify policy/quota before enabling.
 # static_web_app = {
 #   name     = "swa-pipesor-dev-04f339b7"
-#   location = "southcentralus"
+#   location = "westus3"
 # }
-key_vault = {
-  app_material_name    = "kv-pipesor-dev-04f339b7"
-  location             = "southcentralus"
-  tenant_id            = "0e0cb060-09ad-49f5-a005-68b9b49aa1f6"
-  allowed_public_ipv4s = ["REPLACE_WITH_WSL_PUBLIC_IPV4"]
-  # No material, data-plane grants or optional human custody before its own activation.
-}
+key_vault = null
+# Deferred GitHub App custody; enable only for authorized capture.
+# key_vault = {
+#   app_material_name    = "kv-pipesor-dev-04f339b7"
+#   location             = "westus3"
+#   tenant_id            = "0e0cb060-09ad-49f5-a005-68b9b49aa1f6"
+#   allowed_public_ipv4s = ["REPLACE_WITH_WSL_PUBLIC_IPV4"]
+#   # No material, data-plane grants or optional human custody before its own activation.
+# }
 # This handoff creates no resources and is unnecessary for foundation provisioning.
 rag_runtime_contract = null
 

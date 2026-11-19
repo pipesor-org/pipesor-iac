@@ -335,6 +335,18 @@ run "combined_foundations_contract" {
     application_insights_enabled = true
     foundry                      = { account_name = "test-pipesor-dev-ai", project_name = "pipesor-dev", location = "airegion" }
     static_web_app               = { name = "test-pipesor-dev-web", location = "webregion" }
+    rag_runtime_contract = {
+      embedding_deployment_name   = "test-dev-embeddings"
+      embedding_model_version     = "test-model-version"
+      tenant_id                   = "11111111-1111-1111-1111-111111111111"
+      rag_audience_client_id      = "20000000-0000-4000-8000-000000000001"
+      recommendation_client_id    = "20000000-0000-4000-8000-000000000002"
+      recommendation_principal_id = "20000000-0000-4000-8000-000000000003"
+      rag_query_app_role_id       = "20000000-0000-4000-8000-000000000004"
+      rag_runtime_principal_id    = "20000000-0000-4000-8000-000000000005"
+      rag_import_principal_id     = "20000000-0000-4000-8000-000000000006"
+      rag_migration_principal_id  = "20000000-0000-4000-8000-000000000007"
+    }
   }
   override_resource {
     target          = module.resource_group.module.resource_group.azapi_resource.this
@@ -423,6 +435,16 @@ run "combined_foundations_contract" {
   assert {
     condition     = output.service_bus.name == "test-pipesor-dev-bus" && output.foundry.account_name == "test-pipesor-dev-ai" && output.static_web_app.name == "test-pipesor-dev-web" && output.container_platform.environment_name == "caepipesordev"
     error_message = "All approved foundations must coexist without losing environment identity."
+  }
+
+  assert {
+    condition     = output.rag_runtime_contract.embedding.model == "text-embedding-3-small" && output.rag_runtime_contract.embedding.dimensions == 1536 && output.rag_runtime_contract.embedding.api == "v1" && output.rag_runtime_contract.embedding.endpoint == output.foundry.endpoint && output.rag_runtime_contract.embedding.deployment_name == var.rag_runtime_contract.embedding_deployment_name
+    error_message = "The RAG handoff must bind the approved embedding contract to the DEV Foundry endpoint."
+  }
+
+  assert {
+    condition     = output.rag_runtime_contract.authorization.app_role_name == "Rag.Query" && output.rag_runtime_contract.authorization.recommendation_client_id == var.rag_runtime_contract.recommendation_client_id && output.rag_runtime_contract.identity.recommendation_principal_id == var.rag_runtime_contract.recommendation_principal_id && output.rag_runtime_contract.postgresql.host == output.postgresql.fqdn && output.rag_runtime_contract.postgresql.runtime_access == "knowledge_read" && output.rag_runtime_contract.postgresql.import_access == "knowledge_read_write" && output.rag_runtime_contract.postgresql.migration_access == "knowledge_ddl"
+    error_message = "The handoff must retain the Recommendation caller and the distinct RAG database access boundaries."
   }
 }
 
