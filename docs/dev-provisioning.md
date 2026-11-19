@@ -11,10 +11,10 @@ version, Azure CLI, Python 3, `age` and a private Bash terminal in WSL2.
 ## Configuration and naming
 
 Use the DEV examples beside their existing roots. The subscription and tenant
-come from ADR 004. `southcentralus` is the proposed common region; each selected resource's
-subscription-specific availability must pass the checks below. The candidate enables ACA, PostgreSQL and Application Insights; the post-registration
-ACA quota checks below must pass before generating its real plan. Static hosting starts disabled until a supported region
-satisfies the subscription's current location policy. The region, address
+come from ADR 004. `westus3` is the approved DEV planning region; each selected resource's
+subscription-specific availability must pass the checks below. The candidate enables ACA, PostgreSQL, Service Bus and Foundry. The post-registration
+ACA quota checks below must pass before generating its real plan. Static hosting,
+Key Vault and Application Insights are deferred for the synthetic core. The region, address
 allocation and operator grants must be included in the apply authorization.
 
 | Input | Selected preparation value and reason |
@@ -39,6 +39,66 @@ subnets, role assignment UUIDs and child project names keep their existing scope
 No naming-module migration, random suffix, provider upgrade or resource-address
 change is needed. AVM resource-group 0.4.0/state-store Storage AVM 0.8.0 and direct
 AzAPI 2.9.0 resources preserve their existing ownership.
+
+## Synthetic diagnostic workload sequence
+
+This is the smallest DEV path that retains the local owner checks. The owner
+must approve the synthetic publisher and trusted capture-authority input
+before they are wired. Start at the existing normalized event boundary.
+Defer real GitHub capture, GitHub App credentials, Key Vault, Application
+Insights, and non-DEV environments. The ACA module still includes its log
+workspace. Use the existing Static Web Apps Free module for the Azure-hosted
+React build only after its own location and offer checks pass.
+
+1. **Foundations.** Verify the target, quota, PostgreSQL SKU/storage, Foundry
+   model availability, spending and state custody. Under the existing
+   bootstrap procedure, review a plan for DEV state storage and the resource
+   group, ACA/VNet, PostgreSQL/private DNS, Service Bus Standard and Foundry
+   account/project. Set `application_insights_enabled = false` and
+   `key_vault = null` for this synthetic path. Review Static Web Apps in the
+   foundation plan or approve it separately once eligible.
+2. **Data and events.** From the private network, create the database,
+   enable `vector`, and apply owner migrations before starting dependents:
+   Ingestion V1–V2, Pipeline V1–V5 (`ops`), Log/Event V1–V2 then
+   Correlation V1–V4 (`evidence`, separate Flyway histories),
+   Recommendation receipts V1 (`diagnosis`), and RAG Alembic head
+   (`knowledge`). Review any later diagnostic read-model migration separately.
+   Assign distinct runtime and migrator roles. Verify Entra token refresh on
+   new pooled database connections. Create one topic and three filtered
+   subscriptions for the canonical event path: Pipeline receives
+   `execution.snapshot` major 1; Log/Event and NLP each receive
+   `protected_workflow_evidence` major 2. Bind the approved synthetic producer
+   to Data Sender and consumers to scoped Data Receiver. Verify durable owner
+   registration before NLP can complete a message, including redelivery and
+   exhausted-message handling.
+3. **Internal applications and AI.** Compose and publish immutable internal
+   workload images, including the currently missing Log/Event, Correlation,
+   and Recommendation runtime compositions. Verify private pull, health
+   and rollback inputs. Run Ingestion in machine-scope authority mode only.
+   Pipeline asks it for current scope. Log/Event registers protected evidence
+   after the Pipeline owner check. NLP sends to Correlation, which verifies
+   Pipeline and Log/Event ownership and delivers the durable Recommendation
+   receipt. Use approved workload client/principal bindings and app roles at
+   each call. Configure RAG PostgreSQL runtime/import/migration access,
+   `Rag.Query`, and the managed `text-embedding-3-small` 1536-dimensional
+   deployment. Import the authorized synthetic knowledge through the existing
+   importer. Recommendation needs the approved diagnostic model, endpoint,
+   corresponding inference grant and provider adapter. Check RAG and
+   Recommendation before starting Correlation; check all owners before NLP
+   and the first scoped event publication.
+4. **Dashboard and acceptance.** Approve the versioned diagnostic read and
+   result persistence or reconstruction contracts, plus the Entra delegated
+   audience/scope, resource access and browser origin. Expose only the approved
+   dashboard API over ACA HTTPS and host the React build on the selected site.
+   Run one synthetic execution and inspect end-to-end provenance in the browser.
+   Keep the existing loopback HTTP test as the separate local regression gate.
+
+This plan preserves all seven backend roles because the existing current-scope
+chain reaches Ingestion even when the source event is synthetic. Reducing the
+path to pre-registered evidence or a pre-correlated receipt requires an approved
+input boundary and verifies less of the chain. Existing Terraform modules create
+foundations; the application compositions, messaging children, grants, model
+deployments and approved read API are separate readiness work.
 
 ## Read-only preflight and remaining decisions
 
@@ -85,7 +145,7 @@ az resource list --subscription "$DEV_SUBSCRIPTION" --query '[].{type:type,name:
 az rest --method get --url "https://management.azure.com/subscriptions/$DEV_SUBSCRIPTION/providers/Microsoft.Authorization/permissions?api-version=2022-04-01" --query 'value[].{actions:actions,notActions:notActions}' -o json
 az policy assignment list --scope "/subscriptions/$DEV_SUBSCRIPTION" --disable-scope-strict-match --query '[].{name:name,scope:scope,policy:policyDefinitionId}' -o json
 az storage account check-name --subscription "$DEV_SUBSCRIPTION" --name stpipesordev04f339b7 --query '{available:nameAvailable,reason:reason}' -o json || echo 'Storage name availability unresolved; retry after registration'
-az cognitiveservices account list-skus --subscription "$DEV_SUBSCRIPTION" --kind AIServices --location southcentralus -o json > "$PRIVATE_DIR/foundry-skus.json"
+az cognitiveservices account list-skus --subscription "$DEV_SUBSCRIPTION" --kind AIServices --location westus3 -o json > "$PRIVATE_DIR/foundry-skus.json"
 ```
 
 Inspect inherited deny assignments/policies and expand the actual role definitions;
@@ -153,7 +213,7 @@ PY
 
 Check the actual public NAT/VPN egress, not WSL's private address; validate the
 10.50.0.0/16 allocation against `ip route` and intended Windows/VPN routes.
-The example selects ACA, PostgreSQL and Application Insights but leaves Static Web Apps disabled. If the ACA quota gate fails, set `container_platform` and `postgresql` to null and `application_insights_enabled` to false before the first plan. Do not enable ACA until an allowed region has positive managed-environment quota; PostgreSQL and Insights depend on ACA. Do not enable Static Web Apps until an allowed supported region or an authorized policy change is confirmed. For other blocked capabilities, keep the desired reviewed candidate separately and
+The example selects ACA, PostgreSQL, Service Bus and Foundry and leaves Static Web Apps, Key Vault and Application Insights disabled. If the ACA quota gate fails, set `container_platform` and `postgresql` to null and `application_insights_enabled` to false before the first plan. Do not enable ACA until an allowed region has positive managed-environment quota; PostgreSQL and Insights depend on ACA. Do not enable Static Web Apps until an allowed supported region or an authorized policy change is confirmed. For other blocked capabilities, keep the desired reviewed candidate separately and
 set only that capability to null **before its first creation**; account for its
 dependents (no platform means no PostgreSQL/Insights). Never null a deployed object
 to pause billing. Do not substitute runtime-contract placeholders or create apps.
@@ -187,7 +247,7 @@ to pause billing. Do not substitute runtime-contract placeholders or create apps
    exclusion or that registration will fix it. Read current regional usage:
 
    ```bash
-   export DEV_LOCATION=southcentralus
+   export DEV_LOCATION=westus3
    az rest --method get --url "https://management.azure.com/subscriptions/$DEV_SUBSCRIPTION/providers/Microsoft.App/locations/$DEV_LOCATION/usages?api-version=2025-07-01" \
      --query "value[?name.value=='ManagedEnvironmentCount'].{quota:name.value,current:currentValue,limit:limit}" -o json
    ```
@@ -334,7 +394,8 @@ PY
    cp "$PRIVATE_DIR/dev-$stamp.tfstate.age" "$BACKUP_ONE/"
    cp "$PRIVATE_DIR/dev-$stamp.tfstate.age" "$BACKUP_TWO/"
    az resource list --resource-group rg-pipesor-dev --subscription "$DEV_SUBSCRIPTION" --query '[].{name:name,type:type,location:location}' -o json
-   az resource show --resource-group rg-pipesor-dev --resource-type Microsoft.KeyVault/vaults --name kv-pipesor-dev-04f339b7 --query 'properties.{tenant:tenantId,rbac:enableRbacAuthorization,purge:enablePurgeProtection,recovery:softDeleteRetentionInDays,network:networkAcls}' -o json
+   # If Key Vault was separately selected and authorized:
+   # az resource show --resource-group rg-pipesor-dev --resource-type Microsoft.KeyVault/vaults --name kv-pipesor-dev-04f339b7 --query 'properties.{tenant:tenantId,rbac:enableRbacAuthorization,purge:enablePurgeProtection,recovery:softDeleteRetentionInDays,network:networkAcls}' -o json
    az resource show --resource-group rg-pipesor-dev --resource-type Microsoft.ServiceBus/namespaces --name sb-pipesor-dev-04f339b7 --query '{sku:sku,localAuth:properties.disableLocalAuth,tls:properties.minimumTlsVersion}' -o json
    az postgres flexible-server show --resource-group rg-pipesor-dev --name pg-pipesor-dev-04f339b7 --query '{version:version,sku:sku,storage:storage,auth:authConfig,backup:backup,network:network}' -o json
    az resource show --resource-group rg-pipesor-dev --resource-type Microsoft.CognitiveServices/accounts --name ai-pipesor-dev-04f339b7 --query '{kind:kind,sku:sku,localAuth:properties.disableLocalAuth,projects:properties.allowProjectManagement}' -o json
