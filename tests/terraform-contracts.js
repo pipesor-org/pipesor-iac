@@ -113,6 +113,9 @@ export function checkCallerPlans(directory, stdout) {
     assert.equal(pgSubnet.body.properties.addressPrefix, '10.50.2.0/28', 'Database caller allocation');
     assert.equal(admin.name, principals[0], 'Database caller administrator');
     assert.equal(server.body.properties.authConfig.tenantId, subscription.split('/')[2], 'Database caller tenant');
+    if (environment === 'dev') {
+      assert.deepEqual(server.body.sku, { name: 'Standard_D2s_v3', tier: 'GeneralPurpose' }, 'DEV database SKU override');
+    }
     const vaultPrefix = 'module.key_vault[0].azapi_resource.';
     const vaultAddresses = [
       vaultPrefix + 'vault["app_material"]', vaultPrefix + 'vault["custody"]',
@@ -230,7 +233,8 @@ export function checkCallerPlans(directory, stdout) {
     }
     assert.ok(container.id, 'Missing mocked container ID');
     const grants = (configured.resource_changes ?? []).filter(change => change.type === 'azapi_resource' && change.change.after?.type?.startsWith('Microsoft.Authorization/roleAssignments@')).map(change => change.change.after);
-    assert.deepEqual(grants.map(grant => [grant.body.properties.principalId, grant.parent_id, grant.body.properties.roleDefinitionId]).sort(), principals.map(principal => [principal, container.id, role]).sort(), 'Caller principals, container scope and role');
+    const expectedPrincipals = environment === 'dev' ? principals.slice(0, 1) : principals;
+    assert.deepEqual(grants.map(grant => [grant.body.properties.principalId, grant.parent_id, grant.body.properties.roleDefinitionId]).sort(), expectedPrincipals.map(principal => [principal, container.id, role]).sort(), 'Caller principals, container scope and role');
   }
 }
 

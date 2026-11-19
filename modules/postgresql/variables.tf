@@ -33,6 +33,7 @@ variable "configuration" {
     subnet_prefix = string
     tenant_id     = string
     administrator = object({ object_id = string, principal_name = string, principal_type = string })
+    sku           = optional(object({ name = string, tier = string }), { name = "Standard_B2s", tier = "Burstable" })
   })
   nullable = false
   validation {

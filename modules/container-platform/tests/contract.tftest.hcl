@@ -74,7 +74,7 @@ run "consumption_network_and_logs_contract" {
     error_message = "Disable workspace key authentication and require workspace permissions for queries."
   }
   assert {
-    condition     = azapi_resource.environment.body.properties.appLogsConfiguration == { destination = "azure-monitor" } && azapi_resource.logs.parent_id == azapi_resource.environment.id && azapi_resource.logs.body.properties.workspaceId == "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.OperationalInsights/workspaces/log-pipesor-dev" && azapi_resource.logs.body.properties.logs == [{ category = "ContainerAppSystemLogs", enabled = true }, { category = "ContainerAppConsoleLogs", enabled = true }]
+    condition     = azapi_resource.environment.body.properties.appLogsConfiguration == { destination = "azure-monitor" } && azapi_resource.logs.parent_id == azapi_resource.environment.id && azapi_resource.logs.body.properties.workspaceId == "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.OperationalInsights/workspaces/log-pipesor-dev" && toset([for log in azapi_resource.logs.body.properties.logs : log.category if log.enabled]) == toset(["ContainerAppSystemLogs", "ContainerAppConsoleLogs"]) && alltrue([for log in azapi_resource.logs.body.properties.logs : !log.retentionPolicy.enabled]) && !azapi_resource.logs.body.properties.metrics[0].enabled
     error_message = "Route both platform and console logs through Azure Monitor to the intended workspace without shared keys."
   }
   assert {

@@ -16,7 +16,7 @@ variables {
     location      = "testregion"
     replication   = "ZRS"
     recovery_days = 17
-    principal_ids = ["22222222-2222-2222-2222-222222222222", "33333333-3333-3333-3333-333333333333"]
+    principal_ids = ["22222222-2222-2222-2222-222222222222"]
     allowed_ips   = ["198.51.100.5", "203.0.113.0/24"]
   }
 }

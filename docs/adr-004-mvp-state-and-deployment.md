@@ -82,7 +82,7 @@ blob versions. Review accumulated storage cost rather than assuming 30-day total
 retention. Do not weaken the deny-by-default public-IP firewall, Entra-only access
 or container-scoped state grants to accommodate automation.
 
-Jhon is the primary bootstrap-state custodian and Terraform operator; Ramiro is
+Under the original DEV procedure, superseded below, Jhon was the primary bootstrap-state custodian and Terraform operator; Ramiro was
 the backup custodian and subscription owner/initial access authorizer, not the
 routine Terraform executor. Bootstrap state stays on encrypted local storage outside Git, with
 restricted permissions and encrypted backups in Jhon's OneDrive Personal and
@@ -100,6 +100,26 @@ with independent recovery access for both custodians. Key recovery and a restore
 drill remain operational prerequisites. This does not add automatic cloud deletion.
 Database recovery is separate; multiregional recovery is deferred. Restoring state
 must reconcile actual resources, lineage and serial; it is not resource rollback.
+
+### Owner-directed DEV custody update (2026-11-19)
+
+This update supersedes the original DEV dual-custodian procedure above.
+Jhon is the authorized DEV Terraform operator and state custodian. He may
+use his existing Azure Owner session for the initial local-state DEV bootstrap
+plan. Owner retains Azure write capability; limit the session to the authorized
+planning commands. The initial DEV bootstrap requires no separate planning
+principal. Existing Azure Policy and least-privilege runtime identities remain
+in force. Future OIDC permission separation is outside this update.
+
+Keep local state, Terraform data and saved plans on BitLocker-protected storage,
+outside Git with restricted permissions. Jhon controls the encryption identity
+and verifies recovery from at least one independently stored encrypted backup.
+Record ciphertext and restored plaintext SHA-256 checks. Retain the approved
+backup retention period. Keep the private identity separate from backup copies.
+A second recipient, a second backup destination and another person's recovery
+test are optional. Apply, RBAC modifications and Azure resource creation still
+require explicit authorization. Preserve immutable source, private full-plan
+inspection and saved-plan SHA-256 evidence.
 
 ## Execution and approval contract
 
@@ -181,20 +201,18 @@ backend authorization and leases require later authorized checks. See the
 
 ## Encryption and retention
 
-Use established age encryption with separate Jhon and Ramiro identities; keep
-plan-transfer identities separate from long-term backup identities. Encrypt each
-file to both custodians' verified public recipients for that purpose, so either
-person can recover independently with their own private identity. This is not joint
-approval or two-person decryption. Do not generate operational keys or store any
-private key in this repository, runner snapshots or artifact archives. Verify
-independent decryption and key recovery before activation.
+For DEV, use Jhon's verified public age recipient and retain the private
+identity outside the repository, runner snapshots and backup destinations.
+Verify that Jhon can recover and decrypt an independently stored encrypted
+copy. If transferring plans, keep plan-transfer and long-term backup identities
+separate. The original procedure required both custodians' recipients and
+recovery tests, with copies in OneDrive Personal and external storage.
 
-Encrypted plans have one-day artifact retention. State backups have an initial
-90-day retention in encrypted local custody, Jhon's OneDrive Personal and independent
-external storage. Those policies are separate from 30-day backend soft deletion;
-old backend versions do not automatically expire. Keep a creation/expiry inventory
-and verify replacement backups before a needed recovery copy expires. Retention
-implementation must not silently introduce automatic Azure or OneDrive deletion.
+Encrypted plans have one-day artifact retention. DEV state backups have an
+initial 90-day retention and at least one independently stored encrypted copy.
+These policies are separate from the 30-day backend soft deletion; old backend
+versions do not automatically expire. Keep a creation/expiry inventory and
+verify replacement backups before a needed recovery copy expires.
 
 Terraform must read plaintext while planning/reviewing/applying. Keep plaintext in
 restricted temporary storage; no terminal/JSON plan dumps in Actions logs. Any

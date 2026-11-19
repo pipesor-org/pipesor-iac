@@ -22,6 +22,17 @@ identity and security contracts. Preserve DEV-only scope, separate state roots,
 ADR 001 promotion, recovery and approval requirements. No administrative root
 or new approval mechanism is introduced.
 
+## DEV bootstrap governance addendum (2026-11-19)
+
+The project owner supersedes the dual-custodian prerequisite for academic DEV
+and authorizes Jhon as its Terraform operator and state custodian. The existing
+DEV Owner session may generate the initial local-state bootstrap plan. Retain
+BitLocker-protected local custody, one independently stored encrypted and tested
+backup, immutable source and saved-plan SHA-256 review, and separate explicit
+authorization for apply, RBAC changes and Azure resource creation.
+See [ADR 004](adr-004-mvp-state-and-deployment.md#owner-directed-dev-custody-update-2026-11-19).
+This change is limited to DEV.
+
 ## Retirement addendum (2026-11-16)
 
 The project owner subsequently authorized read-only inventory of the intended

@@ -64,11 +64,22 @@ resource "azapi_resource" "logs" {
   parent_id = azapi_resource.environment.id
   name      = "platform-logs"
   body = { properties = {
-    workspaceId                 = azapi_resource.workspace.id
-    logAnalyticsDestinationType = "Dedicated"
-    logs = [
-      { category = "ContainerAppSystemLogs", enabled = true },
-      { category = "ContainerAppConsoleLogs", enabled = true }
-    ]
+    workspaceId = azapi_resource.workspace.id
+    # ARM returns these defaults alongside the enabled environment categories.
+    logs = [for category in [
+      "ContainerAppSystemLogs",
+      "ContainerAppConsoleLogs",
+      "ContainerAppHTTPLogs",
+      "AppEnvSpringAppConsoleLogs",
+      "AppEnvSessionConsoleLogs",
+      "AppEnvSessionPoolEventLogs",
+      "AppEnvSessionLifeCycleLogs",
+      ] : {
+      category        = category
+      categoryGroup   = null
+      enabled         = contains(["ContainerAppSystemLogs", "ContainerAppConsoleLogs"], category)
+      retentionPolicy = { days = 0, enabled = false }
+    }]
+    metrics = [{ category = "AllMetrics", enabled = false, retentionPolicy = { days = 0, enabled = false } }]
   } }
 }

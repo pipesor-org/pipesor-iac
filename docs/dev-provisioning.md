@@ -23,7 +23,7 @@ allocation and operator grants must be included in the apply authorization.
 | Workload/state groups | Existing AVM names `rg-pipesor-dev` / `rg-pipesor-state-dev`. |
 | VNet / ACA subnet | `10.50.0.0/16` / `10.50.1.0/24`; dedicated PostgreSQL subnet `10.50.2.0/28`; check against intended VPN/peering routes before approval. |
 | Workspace | Existing platform name; 30-day retention, 0.1 GB/day ingestion cap. Cap is delayed and is not a hard spending limit. |
-| Service Bus / PostgreSQL | `sb-pipesor-dev-04f339b7` Standard / `pg-pipesor-dev-04f339b7` PG17 B2s, 32 GiB, Entra-only, seven-day local backups. |
+| Service Bus / PostgreSQL | `sb-pipesor-dev-04f339b7` Standard / `pg-pipesor-dev-04f339b7` PG17 D2s_v3 General Purpose recovery candidate, 32 GiB, Entra-only, seven-day local backups. |
 | Foundry | `ai-pipesor-dev-04f339b7` AIServices S0 account, `pipesor-dev` project; no deployment or consumption selected. |
 | Deferred Static Web App / Key Vault | `swa-pipesor-dev-04f339b7` Free / `kv-pipesor-dev-04f339b7` Standard, protected 30-day recovery; no credentials initialized. |
 | State/operator access | Explicitly approved operator Entra object ID and WSL public egress IPv4; obtain anew below. |
@@ -103,7 +103,7 @@ deployments and approved read API are separate readiness work.
 ## Read-only preflight and remaining decisions
 
 From the repository root, set `PRIVATE_DIR` to a directory **outside this checkout
-on encrypted storage**, with encrypted independent backup destinations already
+on BitLocker-protected storage**, with an independent encrypted backup destination already
 accessible. Do not use `/tmp` for the sole live state. Keep decryption keys separate.
 
 ```bash
@@ -131,8 +131,7 @@ export ARM_USE_CLI=true ARM_USE_MSI=false ARM_USE_OIDC=false ARM_USE_AKS_WORKLOA
 
 If `age` is absent, install its distribution package with
 `sudo apt-get update && sudo apt-get install age`, then rerun the tool check.
-Verified recipient keys and protected backup paths must still be supplied by the
-custodians. If the context is wrong, deliberately authenticate/select the expected target;
+Verify Jhon’s age recipient and independent backup destination. If the context is wrong, deliberately authenticate/select the expected target;
 never continue with an arbitrary default. `az login --tenant "$DEV_TENANT"` and
 `az account set --subscription "$DEV_SUBSCRIPTION"` configure the local session.
 
@@ -155,10 +154,12 @@ for container-scoped grants. Workloads need management writes for the selected
 resource types and subnet `join/action` / `joinViaServiceEndpoint/action` permissions.
 Foundry creation also creates its existing system identities; PostgreSQL's configured
 Entra administrator is an explicit permission boundary. Runtime data access is not
-implied by subscription management rights. A plan identity must have resource
-reads only; backend Blob Data Contributor/lease permissions are a separate scope.
+implied by subscription management rights. For the initial DEV bootstrap, Jhon
+may plan from his existing Owner session under the owner-directed ADR 004
+update. The owner separately extended that decision to DEV foundation planning
+on 2026-11-19. Backend Blob Data Contributor and lease permissions remain separate.
 
-Before planning, confirm B2s/PG17/32-GiB eligibility and ACA managed-environment quota. Before enabling deferred SWA, confirm Free availability in a policy-allowed region. Confirm Foundry AIServices S0/project support before selecting it. Public
+Before planning, confirm the selected PostgreSQL 17 SKU and 32 GiB storage eligibility and ACA managed-environment quota. Before enabling deferred SWA, confirm Free availability in a policy-allowed region. Confirm Foundry AIServices S0/project support before selecting it. Public
 provider locations do not prove these. Inspect global names with documented
 nonmutating check-name APIs (POST validates a name and creates no object):
 
@@ -283,9 +284,13 @@ to pause billing. Do not substitute runtime-contract placeholders or create apps
    Keep all dependent locations aligned, regenerate a fresh plan and obtain apply
    authorization. Foundation readiness still does not activate applications.
 
-2. **Authorize bootstrap initialization/local state custody** after verifying two
-   age recipients, two independent encrypted backup destinations, and each
-   custodian's recovery test. Use a fresh protected Terraform data directory:
+2. **Verify custody and use the authorized local bootstrap operation.** Jhon
+   controls the verified age identity. On BitLocker-protected storage, use a
+   mode-700 working directory outside Git with a fresh local backend. Before
+   initialization, encrypt a recovery probe, store it at the independent
+   backup destination, verify its ciphertext SHA-256, and decrypt the stored
+   copy with Jhon's key to verify the original plaintext SHA-256. Keep the
+   identity separate from the backup. Record the check and source SHA.
 
    ```bash
    export TF_DATA_DIR="$PRIVATE_DIR/tfdata-bootstrap"
@@ -296,8 +301,12 @@ to pause billing. Do not substitute runtime-contract placeholders or create apps
    terraform -chdir=bootstrap/dev validate
    ```
 
-   With a separately authenticated resource-read identity and no existing resources,
-   generate a protected plan; otherwise resolve the missing reads before proceeding:
+   Verify Jhon's existing DEV Owner session, the reviewed immutable source,
+   approved egress, and absence of bootstrap state and target resources.
+   Confirm locked dependencies, disabled automatic provider registration and
+   disabled AzAPI preflight. Limit execution to the authorized initialization,
+   validation and saved plan. Inspect the complete saved plan privately and
+   record its SHA-256 before any separate apply authorization.
 
    ```bash
    terraform -chdir=bootstrap/dev plan -input=false -lock-timeout=60s \
@@ -323,18 +332,19 @@ to pause billing. Do not substitute runtime-contract placeholders or create apps
    Never retry a saved plan after partial apply. Preserve local state and backups.
 
 4. Verify management properties, then back up state before using the new backend.
-   `AGE_RECIPIENTS_FILE` contains both verified public recipients, one per line;
-   both backup directories must already be approved and accessible:
+   Use Jhon’s verified public recipient in `AGE_RECIPIENTS_FILE`.
+   `BACKUP_ONE` is the independent destination:
 
    ```bash
    : "${AGE_RECIPIENTS_FILE:?Verified public recipient file}"
+   : "${AGE_IDENTITY_FILE:?Jhon’s separately stored age identity}"
    : "${BACKUP_ONE:?Approved independent backup directory}"
-   : "${BACKUP_TWO:?Second approved independent backup directory}"
    stamp=$(date -u +%Y%m%dT%H%M%SZ)
    age -R "$AGE_RECIPIENTS_FILE" -o "$PRIVATE_DIR/bootstrap-$stamp.tfstate.age" "$PRIVATE_DIR/bootstrap.tfstate"
    cp "$PRIVATE_DIR/bootstrap-$stamp.tfstate.age" "$BACKUP_ONE/"
-   cp "$PRIVATE_DIR/bootstrap-$stamp.tfstate.age" "$BACKUP_TWO/"
-   sha256sum "$PRIVATE_DIR/bootstrap-$stamp.tfstate.age"
+   cmp "$PRIVATE_DIR/bootstrap-$stamp.tfstate.age" "$BACKUP_ONE/bootstrap-$stamp.tfstate.age"
+   sha256sum "$BACKUP_ONE/bootstrap-$stamp.tfstate.age" "$PRIVATE_DIR/bootstrap.tfstate"
+   age -d -i "$AGE_IDENTITY_FILE" "$BACKUP_ONE/bootstrap-$stamp.tfstate.age" | cmp - "$PRIVATE_DIR/bootstrap.tfstate"
    terraform -chdir=bootstrap/dev output -json backend > "$PRIVATE_DIR/backend.json"
    python3 - "$PRIVATE_DIR" <<'PY'
 import json, pathlib, sys
@@ -348,22 +358,21 @@ PY
    az storage account blob-service-properties show --resource-group rg-pipesor-state-dev --account-name stpipesordev04f339b7 --query '{versioning:isVersioningEnabled,blobRecovery:deleteRetentionPolicy,containerRecovery:containerDeleteRetentionPolicy}' -o json
    ```
 
-   Prove both custodians can decrypt independently, compare plaintext state hashes
-   privately, and retain encrypted backups for 90 days per ADR 004. Do not store keys
+   Record Jhon’s successful recovery and retain the encrypted backup for 90 days. Do not store keys
    beside backups. Wait for scoped RBAC propagation; never enable shared keys or
    widen the firewall to work around a 403.
 
 5. **Authorize first remote-backend initialization and state-locking operations**.
    There is no existing workload state to migrate on a first provisioning; stop if
    one is discovered. Do not use `-migrate-state` or copy bootstrap state into it.
-   Switch to the approved resource-read-only planning identity, then repeat the
-   tenant/subscription and CLI credential checks above. Before initialization,
-   verify that this principal has container-scoped Blob Data Contributor for
-   leases. The bootstrap example grants only `STATE_OPERATOR_ID`; if plan and
-   apply use distinct principals, include both approved object IDs in
-   `settings.principal_ids` before reviewing the bootstrap plan or establish
-   their separately authorized container grants. Management Owner alone is not
-   proof of data-plane or lease access.
+   For academic DEV, Jhon may use his existing Azure Owner session for
+   foundation planning under the owner decision recorded on 2026-11-19.
+   Repeat the tenant, subscription and CLI credential checks. Verify the
+   separate container-scoped Storage Blob Data Contributor grant for leases
+   and leave Terraform state locking enabled. Owner permissions remain
+   effective during planning. Authorization is limited to the reviewed
+   backend initialization and saved plan. Apply remains separately authorized.
+   The future OIDC permission split is outside this DEV operator procedure.
 
    ```bash
    export TF_DATA_DIR="$PRIVATE_DIR/tfdata-dev"
@@ -392,7 +401,9 @@ PY
    stamp=$(date -u +%Y%m%dT%H%M%SZ)
    age -R "$AGE_RECIPIENTS_FILE" -o "$PRIVATE_DIR/dev-$stamp.tfstate.age" "$PRIVATE_DIR/dev.tfstate"
    cp "$PRIVATE_DIR/dev-$stamp.tfstate.age" "$BACKUP_ONE/"
-   cp "$PRIVATE_DIR/dev-$stamp.tfstate.age" "$BACKUP_TWO/"
+   cmp "$PRIVATE_DIR/dev-$stamp.tfstate.age" "$BACKUP_ONE/dev-$stamp.tfstate.age"
+   sha256sum "$BACKUP_ONE/dev-$stamp.tfstate.age" "$PRIVATE_DIR/dev.tfstate"
+   age -d -i "$AGE_IDENTITY_FILE" "$BACKUP_ONE/dev-$stamp.tfstate.age" | cmp - "$PRIVATE_DIR/dev.tfstate"
    az resource list --resource-group rg-pipesor-dev --subscription "$DEV_SUBSCRIPTION" --query '[].{name:name,type:type,location:location}' -o json
    # If Key Vault was separately selected and authorized:
    # az resource show --resource-group rg-pipesor-dev --resource-type Microsoft.KeyVault/vaults --name kv-pipesor-dev-04f339b7 --query 'properties.{tenant:tenantId,rbac:enableRbacAuthorization,purge:enablePurgeProtection,recovery:softDeleteRetentionInDays,network:networkAcls}' -o json
@@ -408,6 +419,18 @@ PY
    until their own runtime/readiness and deployment authorization.
 
 ## Failure recovery and cost control
+
+Azure rejected the initial West US 3 B2s create with `SkuNotAvailable` even
+though the subscription capability catalog listed it. Microsoft’s regional
+table excludes Burstable in West US 3. The DEV example proposes
+`Standard_D2s_v3` General Purpose as the lowest priced listed supported-tier
+candidate. Catalog eligibility does not reserve capacity. Preserve the
+successful foundations and the current remote state. After confirming the
+failed server is absent in Azure, use normal refresh during a separately
+authorized new plan to reconcile its tainted entry. Review the projected
+server, administrator and extension configuration additions and reject
+unrelated changes. Reconcile the higher compute rate with the DEV spending
+limit before apply.
 
 On partial failure, stop and preserve state, current protected logs and encrypted
 backups. Compare `terraform state list` with read-only Azure inventory. Correct only
