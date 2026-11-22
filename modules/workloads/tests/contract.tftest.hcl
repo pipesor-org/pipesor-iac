@@ -7,7 +7,6 @@ variables {
     location                 = "workloadregion"
     platform_tenant_id       = "24c96be0-50f3-4064-b5e4-643088141ae8"
     container_environment_id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.App/managedEnvironments/caepipesordev"
-    dashboard_origin         = "https://synthetic.azurestaticapps.net"
     images = {
       ingestion      = "ghcr.io/pipesor-org/ingestion@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       pipeline       = "ghcr.io/pipesor-org/pipeline@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -16,6 +15,7 @@ variables {
       correlation    = "ghcr.io/pipesor-org/correlation@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       recommendation = "ghcr.io/pipesor-org/recommendation@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       rag            = "ghcr.io/pipesor-org/rag@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      dashboard      = "ghcr.io/pipesor-org/dashboard@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }
     registry      = { server = "ghcr.io", username = "fixture-user", password_secret_name = "ghcr-read-token" }
     key_vault     = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.KeyVault/vaults/kv-app", uri = "https://kv-app.vault.azure.net/" }
@@ -68,8 +68,8 @@ run "runtime_manifest_contract" {
   }
 
   assert {
-    condition     = length(azapi_resource.app) == 7 && length(azapi_resource.signing_key) == 8 && length(azapi_resource.identity) == 8
-    error_message = "Seven apps, eight signing keys (workloads plus sessions) and eight identities (workloads plus db-admin) are expected."
+    condition     = length(azapi_resource.app) == 7 && length(azapi_resource.signing_key) == 8 && length(azapi_resource.identity) == 9
+    error_message = "Seven apps, eight signing keys (workloads plus sessions) and nine identities (workloads, db-admin and dashboard) are expected."
   }
   assert {
     condition     = alltrue([for name, app in azapi_resource.app : app.body.properties.configuration.ingress.external == contains(["ingestion", "pipeline", "recommendation"], name)])

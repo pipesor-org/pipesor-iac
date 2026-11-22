@@ -60,7 +60,7 @@ function environmentEvents() {
   const combined = structuredClone({ resource_changes: [...enabled.resource_changes, ...databasePlan.resource_changes.filter(change => change.address.startsWith('module.postgresql')), ...foundry.resource_changes, ...hosting.resource_changes, ...vaultPlan.resource_changes], output_changes: { ...enabled.output_changes, ...foundry.output_changes, ...hosting.output_changes, ...vaultPlan.output_changes } });
   const get = address => combined.resource_changes.find(change => change.address === address).change.after;
   get('module.container_platform[0].azapi_resource.subnet').body.properties.serviceEndpoints = [{ service: 'Microsoft.KeyVault' }];
-  for (const purpose of ['app_material', 'custody']) get(vaultPrefix + `vault["${purpose}"]`).body.properties.networkAcls.virtualNetworkRules = [{ id: subnet.id, ignoreMissingVnetServiceEndpoint: false }];
+  for (const purpose of ['app_material', 'custody']) get(vaultPrefix + `vault["${purpose}"]`).body.properties.networkAcls.virtualNetworkRules = [{ id: subnet.id.toLowerCase(), ignoreMissingVnetServiceEndpoint: false }];
   const pg = get(pgPrefix + 'server');
   pg.id = `${group}/providers/Microsoft.DBforPostgreSQL/flexibleServers/test-pipesor-qa-pg`;
   get(pgPrefix + 'subnet').id = `${network.id}/subnets/database`;

@@ -1,7 +1,7 @@
 output "workloads" {
   description = "Service URLs and identity IDs (no secrets) for the dashboard build, GitHub App callback and operators."
   value = {
-    urls         = local.url
+    urls         = merge(local.url, { dashboard = local.dashboard_origin })
     callback_url = "${local.url["ingestion"]}/api/v1/auth/github/callback"
     identities = { for name, identity in azapi_resource.identity : name => {
       name         = identity.name

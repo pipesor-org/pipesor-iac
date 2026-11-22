@@ -128,7 +128,7 @@ export function checkCallerPlans(directory, stdout) {
         tenantId: '44444444-4444-4444-4444-444444444444', sku: { family: 'A', name: 'standard' }, accessPolicies: [],
         enableRbacAuthorization: true, enableSoftDelete: true, enablePurgeProtection: true, softDeleteRetentionInDays: 30,
         enabledForDeployment: false, enabledForDiskEncryption: false, enabledForTemplateDeployment: false, publicNetworkAccess: 'Enabled',
-        networkAcls: { bypass: 'None', defaultAction: 'Deny', ipRules: [{ value: '203.0.113.5/32' }], virtualNetworkRules: subnetIds.map(id => ({ id, ignoreMissingVnetServiceEndpoint: false })) },
+        networkAcls: { bypass: 'None', defaultAction: 'Deny', ipRules: [{ value: '203.0.113.5/32' }], virtualNetworkRules: subnetIds.map(id => ({ id: id.toLowerCase(), ignoreMissingVnetServiceEndpoint: false })) },
       };
       const appVault = resource(vaultPlan, vaultAddresses[0]);
       const custodyVault = resource(vaultPlan, vaultAddresses[1]);

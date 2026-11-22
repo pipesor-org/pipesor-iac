@@ -10,11 +10,10 @@ Every `terraform apply`, import and Azure write below needs Jhon's explicit auth
 
 | Module | Adds |
 |---|---|
-| `service-bus` (`topology`) | Topic `workflow-evidence`, subscriptions `pipeline`, `log-event`, `nlp`; each `$Default` rule is replaced by its SQL filter |
+| `service-bus` (`topology`) | Topic `workflow-evidence`, subscriptions `pipeline`, `log-event`, `nlp`, each with one SQL rule `event-type` (ARM-created subscriptions have no default rule) |
 | `foundry` (`deployments`) | `pipesor-dev-diagnostics` (gpt-4o 2024-11-20) and `pipesor-dev-embeddings` (text-embedding-3-small 1), pinned (`NoAutoUpgrade`), capacity 20 |
 | `key-vault` (existing) | App material vault and OAuth custody vault |
-| `static-web-app` (existing) | Dashboard hosting (West US 2: Static Web Apps is not offered in West US 3) |
-| `workloads` (new) | Eight user-assigned identities (seven workloads + `db-admin`), eight non-exportable RSA signing keys, least-privilege role assignments, `db-admin` as an extra PostgreSQL Entra administrator, seven Container Apps and three manual jobs |
+| `workloads` (new) | Nine user-assigned identities (seven workloads, `db-admin`, `dashboard`), eight non-exportable RSA signing keys, least-privilege role assignments, `db-admin` as an extra PostgreSQL Entra administrator, seven service Container Apps, the dashboard Container App (nginx static SPA; Static Web Apps is not offered in the subscription's allowed regions brazilsouth, northcentralus, westus3, southcentralus, mexicocentral) and three manual jobs |
 
 Container Apps are named after their workload, so URLs are
 `https://<workload>.<domain>` (ingestion, pipeline, recommendation) and
@@ -34,7 +33,7 @@ Container Apps are named after their workload, so URLs are
 
 In the private working directory, set `service_bus.topology`, `foundry.deployments`, `key_vault`
 (with your current public IPv4 in `allowed_public_ipv4s` and `custody`) and `static_web_app`
-as in `environments/dev/terraform.tfvars.example`; keep `workloads = null`.
+as in `environments/dev/terraform.tfvars.example` (`static_web_app = null`); keep `workloads = null`.
 
 The two model deployments already exist outside Terraform; import them in the same reviewed plan
 by adding, only for this run, an `imports.tf` (not committed) in `environments/dev`:
@@ -51,7 +50,7 @@ import {
 ```
 
 Plan, review (expect: 2 imports updated to capacity 20 and `NoAutoUpgrade`, topic, 3 subscriptions,
-3 rules, 2 vaults, the subnet's Key Vault service endpoint, the Static Web App) and apply.
+3 rules, 2 vaults and the subnet's Key Vault service endpoint) and apply.
 
 ## Phase 2 — secrets (operator, never in Terraform)
 
@@ -82,9 +81,10 @@ Services that started before step 1 restart on their failing probes and become r
 
 ## Phase 4 — dashboard
 
-Build `pipesor-frontend` with the three external URLs from the `workloads` output and deploy the
-`dist/` folder to the Static Web App with its deployment token (`swa deploy`). The Static Web App
-origin is the CORS origin every human API already trusts.
+The frontend CI publishes an nginx image of the built SPA to GHCR, with the three external API URLs
+(`https://ingestion|pipeline|recommendation.<domain>`) as build arguments; pin its digest as
+`workloads.images.dashboard`. Its origin `https://dashboard.<domain>` is the CORS origin every human
+API trusts and the redirect target after GitHub login.
 
 ## Cost control
 

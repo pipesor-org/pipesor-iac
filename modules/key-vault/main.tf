@@ -26,10 +26,11 @@ resource "azapi_resource" "vault" {
       enabledForTemplateDeployment = false
       publicNetworkAccess          = "Enabled"
       networkAcls = {
-        bypass              = "None"
-        defaultAction       = "Deny"
-        ipRules             = [for ip in sort(tolist(var.configuration.allowed_public_ipv4s)) : { value = ip }]
-        virtualNetworkRules = [for id in sort(tolist(var.allowed_subnet_ids)) : { id = id, ignoreMissingVnetServiceEndpoint = false }]
+        bypass        = "None"
+        defaultAction = "Deny"
+        ipRules       = [for ip in sort(tolist(var.configuration.allowed_public_ipv4s)) : { value = ip }]
+        # ARM stores subnet IDs lowercased; sending them lowercased avoids a perpetual diff.
+        virtualNetworkRules = [for id in sort([for id in var.allowed_subnet_ids : lower(id)]) : { id = id, ignoreMissingVnetServiceEndpoint = false }]
       }
     }
   }

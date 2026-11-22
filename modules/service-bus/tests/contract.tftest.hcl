@@ -151,8 +151,8 @@ run "topology_replaces_default_rules" {
     }
   }
   assert {
-    condition     = alltrue([for rule in azapi_resource.filter : rule.name == "$Default"]) && azapi_resource.filter["pipeline"].body.properties.sqlFilter.sqlExpression == "eventType = 'execution.snapshot'"
-    error_message = "Each subscription must replace its match-all $Default rule with its SQL filter."
+    condition     = alltrue([for rule in azapi_resource.filter : rule.name == "event-type"]) && azapi_resource.filter["pipeline"].body.properties.sqlFilter.sqlExpression == "eventType = 'execution.snapshot'"
+    error_message = "Each subscription needs exactly one SQL rule selecting its event type."
   }
   assert {
     condition     = azapi_resource.subscription["nlp"].body.properties.lockDuration == "PT2M" && azapi_resource.topic[0].body.properties.requiresDuplicateDetection

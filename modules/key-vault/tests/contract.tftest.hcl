@@ -97,7 +97,7 @@ run "subnet_only_access" {
     }
   }
   assert {
-    condition     = azapi_resource.vault["app_material"].body.properties.networkAcls.virtualNetworkRules == [{ id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.Network/virtualNetworks/vnet/subnets/aca", ignoreMissingVnetServiceEndpoint = false }]
+    condition     = azapi_resource.vault["app_material"].body.properties.networkAcls.virtualNetworkRules == [{ id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourcegroups/rg-pipesor-dev/providers/microsoft.network/virtualnetworks/vnet/subnets/aca", ignoreMissingVnetServiceEndpoint = false }]
     error_message = "Permit only the existing environment subnet with an actual service endpoint."
   }
 }

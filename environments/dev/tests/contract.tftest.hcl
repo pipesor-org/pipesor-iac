@@ -576,6 +576,7 @@ run "workloads_runtime_contract" {
         correlation    = "ghcr.io/pipesor-org/correlation@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         recommendation = "ghcr.io/pipesor-org/recommendation@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         rag            = "ghcr.io/pipesor-org/rag@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        dashboard      = "ghcr.io/pipesor-org/dashboard@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       }
       registry = { server = "ghcr.io", username = "fixture-user", password_secret_name = "ghcr-read-token" }
       github = {
