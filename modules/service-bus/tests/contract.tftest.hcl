@@ -130,3 +130,49 @@ run "reject_resource_group" {
   variables { resource_group_id = "/subscriptions/not-a-uuid/resourceGroups/rg-pipesor-dev" }
   expect_failures = [var.resource_group_id]
 }
+
+run "topology_replaces_default_rules" {
+  command = plan
+  variables {
+    environment       = "dev"
+    resource_group_id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev"
+    configuration = {
+      namespace_name = "sb-fixture"
+      location       = "testregion"
+      topology = {
+        topic_name                 = "workflow-evidence"
+        message_ttl                = "P14D"
+        duplicate_detection_window = "PT10M"
+        subscriptions = {
+          pipeline = { sql_filter = "eventType = 'execution.snapshot'", lock_duration = "PT1M", max_delivery_count = 10 }
+          nlp      = { sql_filter = "eventType = 'protected_workflow_evidence'", lock_duration = "PT2M", max_delivery_count = 10 }
+        }
+      }
+    }
+  }
+  assert {
+    condition     = alltrue([for rule in azapi_resource.filter : rule.name == "$Default"]) && azapi_resource.filter["pipeline"].body.properties.sqlFilter.sqlExpression == "eventType = 'execution.snapshot'"
+    error_message = "Each subscription must replace its match-all $Default rule with its SQL filter."
+  }
+  assert {
+    condition     = azapi_resource.subscription["nlp"].body.properties.lockDuration == "PT2M" && azapi_resource.topic[0].body.properties.requiresDuplicateDetection
+    error_message = "Lock durations and duplicate detection follow the runtime manifest."
+  }
+}
+
+run "rejects_lock_longer_than_five_minutes" {
+  command = plan
+  variables {
+    configuration = {
+      namespace_name = "sb-fixture"
+      location       = "testregion"
+      topology = {
+        topic_name                 = "workflow-evidence"
+        message_ttl                = "P14D"
+        duplicate_detection_window = "PT10M"
+        subscriptions              = { pipeline = { sql_filter = "1=1", lock_duration = "PT6M", max_delivery_count = 10 } }
+      }
+    }
+  }
+  expect_failures = [var.configuration]
+}

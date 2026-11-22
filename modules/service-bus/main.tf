@@ -17,3 +17,45 @@ resource "azapi_resource" "namespace" {
     }
   }
 }
+
+# Runtime manifest messaging topology: one topic, one filtered subscription per consumer workload.
+resource "azapi_resource" "topic" {
+  count     = var.configuration.topology == null ? 0 : 1
+  type      = "Microsoft.ServiceBus/namespaces/topics@2024-01-01"
+  name      = var.configuration.topology.topic_name
+  parent_id = azapi_resource.namespace.id
+  body = { properties = {
+    defaultMessageTimeToLive            = var.configuration.topology.message_ttl
+    requiresDuplicateDetection          = true
+    duplicateDetectionHistoryTimeWindow = var.configuration.topology.duplicate_detection_window
+    enablePartitioning                  = false
+    supportOrdering                     = false
+  } }
+}
+
+resource "azapi_resource" "subscription" {
+  for_each  = var.configuration.topology == null ? {} : var.configuration.topology.subscriptions
+  type      = "Microsoft.ServiceBus/namespaces/topics/subscriptions@2024-01-01"
+  name      = each.key
+  parent_id = azapi_resource.topic[0].id
+  body = { properties = {
+    lockDuration                     = each.value.lock_duration
+    maxDeliveryCount                 = each.value.max_delivery_count
+    defaultMessageTimeToLive         = var.configuration.topology.message_ttl
+    deadLetteringOnMessageExpiration = true
+    requiresSession                  = false
+  } }
+}
+
+# Azure creates a match-all "$Default" rule with every subscription; replacing it is what makes the
+# subscription receive only its event type (an extra rule would be OR-ed with match-all).
+resource "azapi_resource" "filter" {
+  for_each  = azapi_resource.subscription
+  type      = "Microsoft.ServiceBus/namespaces/topics/subscriptions/rules@2024-01-01"
+  name      = "$Default"
+  parent_id = each.value.id
+  body = { properties = {
+    filterType = "SqlFilter"
+    sqlFilter  = { sqlExpression = var.configuration.topology.subscriptions[each.key].sql_filter }
+  } }
+}

@@ -13,6 +13,17 @@ container_platform = {
 service_bus = {
   namespace_name = "sb-pipesor-dev-04f339b7"
   location       = "westus3"
+  # Runtime manifest messaging topology (pipesor-docs development/runtime-manifest.md).
+  topology = {
+    topic_name                 = "workflow-evidence"
+    message_ttl                = "P14D"
+    duplicate_detection_window = "PT10M"
+    subscriptions = {
+      pipeline  = { sql_filter = "eventType = 'execution.snapshot'", lock_duration = "PT1M", max_delivery_count = 10 }
+      log-event = { sql_filter = "eventType = 'protected_workflow_evidence'", lock_duration = "PT1M", max_delivery_count = 10 }
+      nlp       = { sql_filter = "eventType = 'protected_workflow_evidence'", lock_duration = "PT2M", max_delivery_count = 10 }
+    }
+  }
 }
 postgresql = {
   server_name   = "pg-pipesor-dev-04f339b7"
@@ -31,21 +42,51 @@ foundry = {
   account_name = "ai-pipesor-dev-04f339b7"
   project_name = "pipesor-dev"
   location     = "westus3"
+  # Existing deployments are imported (docs/dev-runtime-deployment.md); capacity is thousands of tokens per minute.
+  deployments = {
+    pipesor-dev-diagnostics = { model_name = "gpt-4o", model_version = "2024-11-20", sku_name = "DataZoneStandard", capacity = 20 }
+    pipesor-dev-embeddings  = { model_name = "text-embedding-3-small", model_version = "1", sku_name = "DataZoneStandard", capacity = 20 }
+  }
 }
-static_web_app = null
-# Deferred candidate; verify policy/quota before enabling.
-# static_web_app = {
-#   name     = "swa-pipesor-dev-04f339b7"
-#   location = "westus3"
-# }
-key_vault = null
-# Deferred GitHub App custody; enable only for authorized capture.
-# key_vault = {
-#   app_material_name    = "kv-pipesor-dev-04f339b7"
-#   location             = "westus3"
-#   tenant_id            = "0e0cb060-09ad-49f5-a005-68b9b49aa1f6"
-#   allowed_public_ipv4s = ["REPLACE_WITH_WSL_PUBLIC_IPV4"]
-#   # No material, data-plane grants or optional human custody before its own activation.
+static_web_app = {
+  name     = "swa-pipesor-dev-04f339b7"
+  location = "westus2" # Static Web Apps is not offered in westus3; content is global.
+}
+# App material (signing keys, GitHub App material, registry token, authority document) and OAuth custody vaults.
+key_vault = {
+  app_material_name    = "kv-pipesor-dev-04f339b7"
+  location             = "westus3"
+  tenant_id            = "0e0cb060-09ad-49f5-a005-68b9b49aa1f6"
+  allowed_public_ipv4s = ["REPLACE_WITH_OPERATOR_PUBLIC_IPV4"]
+  custody              = { name = "kv-pipesor-dev-usr" }
+}
+# Phase 2 only, after the operator stored the secrets (docs/dev-runtime-deployment.md).
+workloads = null
+# workloads = {
+#   platform_tenant_id      = "REPLACE_WITH_PIPESOR_PLATFORM_TENANT_UUID"
+#   database                = "pipesor"
+#   chat_deployment         = "pipesor-dev-diagnostics"
+#   embedding_deployment    = "pipesor-dev-embeddings"
+#   embedding_model_version = "1"
+#   images = {
+#     ingestion      = "ghcr.io/pipesor-org/pipesor-ingestion-normalization-service@sha256:REPLACE"
+#     pipeline       = "ghcr.io/pipesor-org/pipesor-pipeline-service@sha256:REPLACE"
+#     log-event      = "ghcr.io/pipesor-org/pipesor-log-event-service@sha256:REPLACE"
+#     nlp            = "ghcr.io/pipesor-org/pipesor-nlp-log-processor@sha256:REPLACE"
+#     correlation    = "ghcr.io/pipesor-org/pipesor-evidence-correlation-engine@sha256:REPLACE"
+#     recommendation = "ghcr.io/pipesor-org/pipesor-recommendation-service@sha256:REPLACE"
+#     rag            = "ghcr.io/pipesor-org/pipesor-rag-retrieval@sha256:REPLACE"
+#   }
+#   registry = { server = "ghcr.io", username = "REPLACE_WITH_GITHUB_USER", password_secret_name = "ghcr-read-token" }
+#   github = {
+#     app_id                  = "REPLACE_WITH_GITHUB_APP_ID"
+#     capture_domain          = "REPLACE_WITH_CAPTURE_DOMAIN"
+#     private_key_secret_name = "github-app-private-key"
+#     private_key_version     = "REPLACE_WITH_32_HEX_SECRET_VERSION"
+#     client_secret_name      = "github-app-client-secret"
+#     client_secret_version   = "REPLACE_WITH_32_HEX_SECRET_VERSION"
+#     authority_secret_name   = "pipesor-authority"
+#   }
 # }
 # This handoff creates no resources and is unnecessary for foundation provisioning.
 rag_runtime_contract = null

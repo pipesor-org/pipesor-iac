@@ -21,6 +21,16 @@ variable "configuration" {
   type = object({
     namespace_name = string
     location       = string
+    topology = optional(object({
+      topic_name                 = string
+      message_ttl                = string
+      duplicate_detection_window = string
+      subscriptions = map(object({
+        sql_filter         = string
+        lock_duration      = string
+        max_delivery_count = number
+      }))
+    }))
   })
   nullable = false
   validation {
@@ -30,5 +40,18 @@ variable "configuration" {
   validation {
     condition     = can(regex("^[a-z][a-z0-9]+$", var.configuration.location))
     error_message = "Location must be an explicit lowercase Azure region code."
+  }
+  validation {
+    condition = var.configuration.topology == null ? true : (
+      can(regex("^[a-z][a-z0-9-]{0,49}$", var.configuration.topology.topic_name)) &&
+      length(var.configuration.topology.subscriptions) > 0 &&
+      alltrue([for name, subscription in var.configuration.topology.subscriptions :
+        can(regex("^[a-z][a-z0-9-]{0,49}$", name)) && length(trimspace(subscription.sql_filter)) > 0 &&
+        subscription.max_delivery_count >= 1 && subscription.max_delivery_count <= 100 &&
+        can(regex("^PT([1-4]M|[1-5]?[0-9]S|5M)$", subscription.lock_duration))
+      ]) && can(regex("^P", var.configuration.topology.message_ttl)) &&
+      can(regex("^PT([1-9]|10)M$|^PT[2-9][0-9]S$", var.configuration.topology.duplicate_detection_window))
+    )
+    error_message = "Topology needs a topic, at least one subscription with a SQL filter, 1-100 deliveries, a lock of at most 5 minutes, an ISO-8601 TTL and a duplicate-detection window of 20 s to 10 minutes."
   }
 }

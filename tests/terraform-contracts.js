@@ -240,7 +240,7 @@ export function checkCallerPlans(directory, stdout) {
 
 if (import.meta.main) {
   const directory = process.argv[2];
-  const module = /^modules\/(resource-group|state-store|container-platform|service-bus|postgresql|application-insights|foundry|static-web-app|key-vault)$/.test(directory);
+  const module = /^modules\/(resource-group|state-store|container-platform|service-bus|postgresql|application-insights|foundry|static-web-app|key-vault|workloads)$/.test(directory);
   assert.ok(module || /^(environments|bootstrap)\/(dev|qa|preprod|prod)$/.test(directory), 'Select one reviewed Terraform directory');
   const command = ['terraform', `-chdir=${directory}`, 'test', '-filter=tests/contract.tftest.hcl'];
   if (!module) command.push('-json', '-verbose');

@@ -40,3 +40,21 @@ resource "azapi_resource" "project" {
     replace_triggered_by = [azapi_resource.account]
   }
 }
+
+# Model deployments. Versions are pinned (no automatic upgrade) so the thesis evaluation keeps one model.
+resource "azapi_resource" "deployment" {
+  for_each  = var.configuration.deployments
+  type      = "Microsoft.CognitiveServices/accounts/deployments@2025-06-01"
+  name      = each.key
+  parent_id = azapi_resource.account.id
+  body = {
+    sku = { name = each.value.sku_name, capacity = each.value.capacity }
+    properties = {
+      model                = { format = "OpenAI", name = each.value.model_name, version = each.value.model_version }
+      versionUpgradeOption = "NoAutoUpgrade"
+      raiPolicyName        = "Microsoft.DefaultV2"
+    }
+  }
+  # Azure serializes deployment operations per account; a concurrent sibling update returns a conflict.
+  retry = { error_message_regex = ["AnotherOperationInProgress", "RequestConflict", "Conflict"] }
+}

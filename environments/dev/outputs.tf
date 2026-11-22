@@ -77,3 +77,8 @@ output "key_vault" {
   description = "Environment-owned vault identities/endpoints, or null when disabled; no secret references or payloads."
   value       = one(module.key_vault[*].vaults)
 }
+
+output "workloads" {
+  description = "Service URLs, GitHub callback, identity IDs and job names, or null when workloads are disabled; no secrets."
+  value       = one(module.workloads[*].workloads)
+}

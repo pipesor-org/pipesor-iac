@@ -24,6 +24,7 @@ jobs:
           - modules/postgresql
           - modules/service-bus
           - modules/container-platform
+          - modules/workloads
           - modules/state-store
           - bootstrap/dev
           - bootstrap/qa

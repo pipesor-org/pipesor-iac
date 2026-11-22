@@ -71,3 +71,40 @@ module "key_vault" {
   configuration      = var.key_vault
   allowed_subnet_ids = var.container_platform == null ? [] : [module.container_platform[0].platform.infrastructure_subnet_id]
 }
+
+module "workloads" {
+  count             = var.workloads == null ? 0 : 1
+  source            = "../../modules/workloads"
+  environment       = "dev"
+  resource_group_id = module.resource_group.resource_group.id
+  configuration = {
+    location                 = var.container_platform.location
+    platform_tenant_id       = var.workloads.platform_tenant_id
+    container_environment_id = module.container_platform[0].platform.environment_id
+    dashboard_origin         = "https://${module.static_web_app[0].site.default_hostname}"
+    images                   = var.workloads.images
+    registry                 = var.workloads.registry
+    key_vault                = { id = module.key_vault[0].vaults["app_material"].id, uri = module.key_vault[0].vaults["app_material"].uri }
+    custody_vault            = { id = module.key_vault[0].vaults["custody"].id, uri = module.key_vault[0].vaults["custody"].uri }
+    service_bus = {
+      namespace_name   = module.service_bus[0].namespace.name
+      topic_id         = module.service_bus[0].topology.topic_id
+      topic_name       = module.service_bus[0].topology.topic_name
+      subscription_ids = module.service_bus[0].topology.subscription_ids
+    }
+    foundry = {
+      account_id              = module.foundry[0].foundry.account_id
+      account_name            = module.foundry[0].foundry.account_name
+      chat_deployment         = var.workloads.chat_deployment
+      embedding_deployment    = var.workloads.embedding_deployment
+      embedding_model_version = var.workloads.embedding_model_version
+    }
+    postgresql = {
+      server_id = module.postgresql[0].database.id
+      fqdn      = module.postgresql[0].database.fqdn
+      database  = var.workloads.database
+      tenant_id = var.postgresql.tenant_id
+    }
+    github = var.workloads.github
+  }
+}
