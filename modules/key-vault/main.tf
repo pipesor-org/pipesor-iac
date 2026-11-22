@@ -26,7 +26,9 @@ resource "azapi_resource" "vault" {
       enabledForTemplateDeployment = false
       publicNetworkAccess          = "Enabled"
       networkAcls = {
-        bypass        = "None"
+        # Trusted Azure services (Key Vault management plane creating keys, Container Apps secret references)
+        # are let through only where opted in; RBAC still governs every data-plane operation.
+        bypass        = each.key == "app_material" && var.configuration.allow_trusted_services ? "AzureServices" : "None"
         defaultAction = "Deny"
         ipRules       = [for ip in sort(tolist(var.configuration.allowed_public_ipv4s)) : { value = ip }]
         # ARM stores subnet IDs lowercased; sending them lowercased avoids a perpetual diff.
