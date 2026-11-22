@@ -30,8 +30,9 @@ locals {
   # The dashboard is a static SPA served by its own Container App (Static Web Apps is not offered in the allowed regions).
   dashboard_origin = "https://dashboard.${local.domain}"
   key_name         = { for k in concat(local.workloads, ["session"]) : k => "pipesor-${k}-signing" }
-  key_uri          = { for k, name in local.key_name : k => "${trimsuffix(var.configuration.key_vault.uri, "/")}/keys/${name}" }
-  vault            = trimsuffix(var.configuration.key_vault.uri, "/")
+  # Versioned key identifiers: services pin the key they sign with (NLP requires it); rotation is a redeploy.
+  key_uri = { for k, key in azapi_resource.signing_key : k => key.output.properties.keyUriWithVersion }
+  vault   = trimsuffix(var.configuration.key_vault.uri, "/")
 
   roles = {
     crypto_user     = "12338af0-0e69-4776-bea7-57ae8d297424"
@@ -155,6 +156,7 @@ resource "azapi_resource" "signing_key" {
     keySize = 2048
     keyOps  = ["sign", "verify"]
   } }
+  response_export_values = ["properties.keyUriWithVersion"]
   lifecycle { ignore_changes = [body] }
 }
 
@@ -202,7 +204,7 @@ resource "azapi_resource" "app" {
       ingress = {
         external      = contains(local.external, each.key)
         targetPort    = 8080
-        transport     = "auto"
+        transport     = "Auto" # ARM's stored casing (avoids a perpetual diff)
         allowInsecure = false
         traffic       = [{ latestRevision = true, weight = 100 }]
       }
@@ -219,10 +221,11 @@ resource "azapi_resource" "app" {
         image     = var.configuration.images[each.key]
         resources = contains(local.java, each.key) ? { cpu = 0.5, memory = "1Gi" } : { cpu = 0.25, memory = "0.5Gi" }
         env       = local.env[each.key]
+        # Listed in ARM's stored order (Liveness, Readiness, Startup) to avoid a perpetual diff.
         probes = [
-          { type = "Startup", httpGet = { path = local.health[each.key].live, port = 8080 }, periodSeconds = 5, failureThreshold = 36 },
           { type = "Liveness", httpGet = { path = local.health[each.key].live, port = 8080 }, periodSeconds = 15, failureThreshold = 3 },
           { type = "Readiness", httpGet = { path = local.health[each.key].ready, port = 8080 }, periodSeconds = 10, failureThreshold = 3 },
+          { type = "Startup", httpGet = { path = local.health[each.key].live, port = 8080 }, periodSeconds = 5, failureThreshold = 36 },
         ]
       }]
       # One replica each for the MVP: consumers and workers stay up; leases already guard concurrency.
@@ -252,7 +255,7 @@ resource "azapi_resource" "dashboard" {
       ingress = {
         external      = true
         targetPort    = 8080
-        transport     = "auto"
+        transport     = "Auto" # ARM's stored casing (avoids a perpetual diff)
         allowInsecure = false
         traffic       = [{ latestRevision = true, weight = 100 }]
       }
@@ -291,14 +294,11 @@ locals {
     manualTriggerConfig = { parallelism = 1, replicaCompletionCount = 1 }
   }
   database_setup_sql = join("\n", concat(
-    [for w in local.with_database : <<-SQL
-      DO $$ BEGIN
-        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${local.identity[w]}') THEN
-          PERFORM pgaadauth_create_principal_with_oid('${local.identity[w]}', '${azapi_resource.identity[w].output.properties.principalId}', 'service', false, false);
-        END IF;
-      END $$;
-    SQL
-    ],
+    # Plain idempotent SELECTs: no dollar-quoted blocks, whose "$$" does not survive the job's shell arguments.
+    [for w in local.with_database : join("", [
+      "SELECT pgaadauth_create_principal_with_oid('${local.identity[w]}', '${azapi_resource.identity[w].output.properties.principalId}', 'service', false, false)",
+      " WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${local.identity[w]}');",
+    ])],
     [
       "SELECT 'CREATE DATABASE ${var.configuration.postgresql.database}' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${var.configuration.postgresql.database}')\\gexec",
       "\\connect ${var.configuration.postgresql.database}",
@@ -307,6 +307,8 @@ locals {
       "GRANT CONNECT, CREATE ON DATABASE ${var.configuration.postgresql.database} TO ${join(", ", [for w in local.with_database : "\"${local.identity[w]}\""])};",
       "CREATE SCHEMA IF NOT EXISTS evidence;",
       "GRANT USAGE, CREATE ON SCHEMA evidence TO \"${local.identity["log-event"]}\", \"${local.identity["correlation"]}\";",
+      # Alembic keeps RAG's version table in public, where PostgreSQL 15+ grants no CREATE by default.
+      "GRANT USAGE, CREATE ON SCHEMA public TO \"${local.identity["rag"]}\";",
     ],
   ))
   token = "$IDENTITY_ENDPOINT?api-version=2019-08-01&resource=https://ossrdbms-aad.database.windows.net&client_id=$AZURE_CLIENT_ID"
@@ -401,7 +403,7 @@ resource "azapi_resource" "rag_migrations" {
       resources = { cpu = 0.25, memory = "0.5Gi" }
       command   = ["/bin/sh", "-ec"]
       args = [<<-SCRIPT
-        export PIPESOR_DATABASE_PASSWORD="$(python -c "from azure.identity import ManagedIdentityCredential as C; print(C().get_token('https://ossrdbms-aad.database.windows.net/.default').token)")"
+        export PIPESOR_DATABASE_PASSWORD="$(python -c "import os; from azure.identity import ManagedIdentityCredential as C; print(C(client_id=os.environ['AZURE_CLIENT_ID']).get_token('https://ossrdbms-aad.database.windows.net/.default').token)")"
         alembic upgrade head
       SCRIPT
       ]
