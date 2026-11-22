@@ -283,3 +283,25 @@ run "reject_null_principal" {
   } }
   expect_failures = [var.configuration]
 }
+
+run "trusted_services_only_for_opted_in_app_material" {
+  command = plan
+  variables {
+    configuration = {
+      app_material_name      = "pipesor-dev-app"
+      location               = "vaultregion"
+      tenant_id              = "44444444-4444-4444-4444-444444444444"
+      allowed_public_ipv4s   = ["203.0.113.5/32"]
+      allow_trusted_services = true
+      custody                = { name = "pipesor-dev-usr" }
+    }
+  }
+  assert {
+    condition     = azapi_resource.vault["app_material"].body.properties.networkAcls.bypass == "AzureServices" && azapi_resource.vault["custody"].body.properties.networkAcls.bypass == "None"
+    error_message = "Only the opted-in app material vault lets trusted Azure services through; custody stays closed."
+  }
+  assert {
+    condition     = azapi_resource.vault["app_material"].body.properties.networkAcls.defaultAction == "Deny"
+    error_message = "Public access stays denied by default."
+  }
+}

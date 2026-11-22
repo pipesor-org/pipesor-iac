@@ -39,7 +39,9 @@ variable "configuration" {
     location             = string
     tenant_id            = string
     allowed_public_ipv4s = set(string)
-    app_material_readers = optional(map(object({ object_id = string, principal_type = string })), {})
+    # App material vault only: allow trusted Azure services (needed by ARM-created keys and Container Apps references).
+    allow_trusted_services = optional(bool, false)
+    app_material_readers   = optional(map(object({ object_id = string, principal_type = string })), {})
     custody = optional(object({
       name       = string
       principals = optional(map(object({ object_id = string, principal_type = string })), {})
