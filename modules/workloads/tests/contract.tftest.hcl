@@ -89,6 +89,10 @@ run "runtime_manifest_contract" {
     error_message = "Services receive a versioned signing key identifier."
   }
   assert {
+    condition     = contains(azapi_resource.app["rag"].body.properties.template.containers[0].env, { name = "PIPESOR_DATABASE_URL", value = "postgresql+psycopg://id-pipesor-dev-rag@pg-fixture.postgres.database.azure.com:5432/pipesor" }) && !contains([for variable in azapi_resource.app["rag"].body.properties.template.containers[0].env : variable.name], "PIPESOR_DATABASE_USERNAME")
+    error_message = "RAG takes its Entra principal from the URL and receives no separate username."
+  }
+  assert {
     condition     = contains(azapi_resource.app["correlation"].body.properties.template.containers[0].env, { name = "PIPESOR_ENDPOINTS_LOGEVENT", value = "https://log-event.internal.fixture.workloadregion.azurecontainerapps.io" })
     error_message = "Outbound endpoints use the target's internal HTTPS FQDN."
   }
