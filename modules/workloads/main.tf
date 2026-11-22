@@ -111,8 +111,8 @@ locals {
       { name = "PIPESOR_INFERENCE_DEPLOYMENT", value = var.configuration.foundry.chat_deployment },
     ] : [],
     w == "rag" ? [
-      { name = "PIPESOR_DATABASE_URL", value = "postgresql+psycopg://${var.configuration.postgresql.fqdn}:5432/${var.configuration.postgresql.database}?sslmode=require" },
-      { name = "PIPESOR_DATABASE_USERNAME", value = local.identity["rag"] },
+      # RAG's azure profile rejects configured usernames/passwords: the Entra principal travels in the URL.
+      { name = "PIPESOR_DATABASE_URL", value = "postgresql+psycopg://${local.identity["rag"]}@${var.configuration.postgresql.fqdn}:5432/${var.configuration.postgresql.database}?sslmode=require" },
       { name = "PIPESOR_RAG_AUTHENTICATION_MODE", value = "platform" },
       { name = "PIPESOR_RAG_STORAGE_BACKEND", value = "postgresql" },
       { name = "PIPESOR_RAG_EMBEDDING_BACKEND", value = "azure_openai" },
