@@ -30,8 +30,9 @@ locals {
   # The dashboard is a static SPA served by its own Container App (Static Web Apps is not offered in the allowed regions).
   dashboard_origin = "https://dashboard.${local.domain}"
   key_name         = { for k in concat(local.workloads, ["session"]) : k => "pipesor-${k}-signing" }
-  key_uri          = { for k, name in local.key_name : k => "${trimsuffix(var.configuration.key_vault.uri, "/")}/keys/${name}" }
-  vault            = trimsuffix(var.configuration.key_vault.uri, "/")
+  # Versioned key identifiers: services pin the key they sign with (NLP requires it); rotation is a redeploy.
+  key_uri = { for k, key in azapi_resource.signing_key : k => key.output.properties.keyUriWithVersion }
+  vault   = trimsuffix(var.configuration.key_vault.uri, "/")
 
   roles = {
     crypto_user     = "12338af0-0e69-4776-bea7-57ae8d297424"
@@ -155,6 +156,7 @@ resource "azapi_resource" "signing_key" {
     keySize = 2048
     keyOps  = ["sign", "verify"]
   } }
+  response_export_values = ["properties.keyUriWithVersion"]
   lifecycle { ignore_changes = [body] }
 }
 

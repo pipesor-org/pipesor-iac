@@ -62,6 +62,11 @@ run "runtime_manifest_contract" {
     override_during = plan
     values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.ManagedIdentity/userAssignedIdentities/fixture", output = { properties = { principalId = "55555555-5555-5555-5555-555555555555", clientId = "66666666-6666-6666-6666-666666666666" } } }
   }
+  override_resource {
+    target          = azapi_resource.signing_key
+    override_during = plan
+    values          = { output = { properties = { keyUriWithVersion = "https://kv-app.vault.azure.net/keys/fixture/0123456789abcdef0123456789abcdef" } } }
+  }
   override_data {
     target = data.azapi_resource.environment
     values = { output = { properties = { defaultDomain = "fixture.workloadregion.azurecontainerapps.io" } } }
@@ -78,6 +83,10 @@ run "runtime_manifest_contract" {
   assert {
     condition     = contains(azapi_resource.app["pipeline"].body.properties.template.containers[0].env, { name = "PIPESOR_SECURITY_TRUSTEDWORKLOADS_2_ROLES", value = "Recommendation.DiagnosisEntitlements.Resolve" })
     error_message = "Pipeline must trust recommendation with the entitlement role (route catalog)."
+  }
+  assert {
+    condition     = contains(azapi_resource.app["nlp"].body.properties.template.containers[0].env, { name = "PIPESOR_SIGNING_KEY_ID", value = "https://kv-app.vault.azure.net/keys/fixture/0123456789abcdef0123456789abcdef" })
+    error_message = "Services receive a versioned signing key identifier."
   }
   assert {
     condition     = contains(azapi_resource.app["correlation"].body.properties.template.containers[0].env, { name = "PIPESOR_ENDPOINTS_LOGEVENT", value = "https://log-event.internal.fixture.workloadregion.azurecontainerapps.io" })
