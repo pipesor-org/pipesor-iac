@@ -292,14 +292,11 @@ locals {
     manualTriggerConfig = { parallelism = 1, replicaCompletionCount = 1 }
   }
   database_setup_sql = join("\n", concat(
-    [for w in local.with_database : <<-SQL
-      DO $$ BEGIN
-        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${local.identity[w]}') THEN
-          PERFORM pgaadauth_create_principal_with_oid('${local.identity[w]}', '${azapi_resource.identity[w].output.properties.principalId}', 'service', false, false);
-        END IF;
-      END $$;
-    SQL
-    ],
+    # Plain idempotent SELECTs: no dollar-quoted blocks, whose "$$" does not survive the job's shell arguments.
+    [for w in local.with_database : join("", [
+      "SELECT pgaadauth_create_principal_with_oid('${local.identity[w]}', '${azapi_resource.identity[w].output.properties.principalId}', 'service', false, false)",
+      " WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${local.identity[w]}');",
+    ])],
     [
       "SELECT 'CREATE DATABASE ${var.configuration.postgresql.database}' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${var.configuration.postgresql.database}')\\gexec",
       "\\connect ${var.configuration.postgresql.database}",

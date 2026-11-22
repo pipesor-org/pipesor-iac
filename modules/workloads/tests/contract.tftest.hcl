@@ -101,7 +101,7 @@ run "runtime_manifest_contract" {
     error_message = "Each workload may use only its own signing key; only recommendation and rag reach Foundry."
   }
   assert {
-    condition     = strcontains(azapi_resource.database_setup.body.properties.template.containers[0].args[0], "pgaadauth_create_principal_with_oid('id-pipesor-dev-rag'") && strcontains(azapi_resource.database_setup.body.properties.template.containers[0].args[0], "\nSQL")
+    condition     = strcontains(azapi_resource.database_setup.body.properties.template.containers[0].args[0], "pgaadauth_create_principal_with_oid('id-pipesor-dev-rag'") && strcontains(azapi_resource.database_setup.body.properties.template.containers[0].args[0], "\nSQL") && !strcontains(azapi_resource.database_setup.body.properties.template.containers[0].args[0], "$$")
     error_message = "The database setup job creates one Entra principal per database workload and closes its SQL heredoc on its own line."
   }
 }
