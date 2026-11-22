@@ -7,5 +7,6 @@ output "foundry" {
     project_name = azapi_resource.project.name
     location     = azapi_resource.account.location
     endpoint     = azapi_resource.account.output.properties.endpoint
+    deployments  = { for name, deployment in azapi_resource.deployment : name => deployment.id }
   }
 }

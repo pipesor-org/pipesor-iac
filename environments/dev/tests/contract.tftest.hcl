@@ -512,3 +512,189 @@ run "app_material_only_key_vault_contract" {
     error_message = "Machine integration must not implicitly enable human credential custody."
   }
 }
+
+# Runtime manifest contract for the seven service Container Apps (plan-only, fully mocked).
+run "workloads_runtime_contract" {
+  command = plan
+  variables {
+    container_platform = {
+      location                     = "workloadregion"
+      vnet_address_prefix          = "10.50.0.0/16"
+      infrastructure_subnet_prefix = "10.50.1.0/24"
+      log_retention_days           = 30
+      log_daily_cap_gb             = 0.1
+    }
+    postgresql = {
+      server_name   = "test-pipesor-dev-pg"
+      location      = "workloadregion"
+      subnet_prefix = "10.50.2.0/28"
+      tenant_id     = "11111111-1111-1111-1111-111111111111"
+      administrator = { object_id = "22222222-2222-2222-2222-222222222222", principal_name = "test-admins", principal_type = "Group" }
+    }
+    service_bus = {
+      namespace_name = "test-pipesor-dev-bus"
+      location       = "workloadregion"
+      topology = {
+        topic_name                 = "workflow-evidence"
+        message_ttl                = "P14D"
+        duplicate_detection_window = "PT10M"
+        subscriptions = {
+          pipeline  = { sql_filter = "eventType = 'execution.snapshot'", lock_duration = "PT1M", max_delivery_count = 10 }
+          log-event = { sql_filter = "eventType = 'protected_workflow_evidence'", lock_duration = "PT1M", max_delivery_count = 10 }
+          nlp       = { sql_filter = "eventType = 'protected_workflow_evidence'", lock_duration = "PT2M", max_delivery_count = 10 }
+        }
+      }
+    }
+    key_vault = {
+      app_material_name    = "test-pipesor-dev-app"
+      location             = "workloadregion"
+      tenant_id            = "11111111-1111-1111-1111-111111111111"
+      allowed_public_ipv4s = ["203.0.113.5/32"]
+      custody              = { name = "test-pipesor-dev-usr" }
+    }
+    foundry = {
+      account_name = "test-pipesor-dev-ai"
+      project_name = "pipesor-dev"
+      location     = "workloadregion"
+      deployments = {
+        pipesor-dev-diagnostics = { model_name = "gpt-4o", model_version = "2024-11-20", sku_name = "DataZoneStandard", capacity = 20 }
+        pipesor-dev-embeddings  = { model_name = "text-embedding-3-small", model_version = "1", sku_name = "DataZoneStandard", capacity = 20 }
+      }
+    }
+    static_web_app = { name = "test-pipesor-dev-web", location = "workloadregion" }
+    workloads = {
+      platform_tenant_id      = "24c96be0-50f3-4064-b5e4-643088141ae8"
+      database                = "pipesor"
+      chat_deployment         = "pipesor-dev-diagnostics"
+      embedding_deployment    = "pipesor-dev-embeddings"
+      embedding_model_version = "1"
+      images = {
+        ingestion      = "ghcr.io/pipesor-org/ingestion@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        pipeline       = "ghcr.io/pipesor-org/pipeline@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        log-event      = "ghcr.io/pipesor-org/log-event@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        nlp            = "ghcr.io/pipesor-org/nlp@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        correlation    = "ghcr.io/pipesor-org/correlation@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        recommendation = "ghcr.io/pipesor-org/recommendation@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        rag            = "ghcr.io/pipesor-org/rag@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+      registry = { server = "ghcr.io", username = "fixture-user", password_secret_name = "ghcr-read-token" }
+      github = {
+        app_id                  = "123456"
+        capture_domain          = "pipesor-dev"
+        private_key_secret_name = "github-app-private-key"
+        private_key_version     = "0123456789abcdef0123456789abcdef"
+        client_secret_name      = "github-app-client-secret"
+        client_secret_version   = "fedcba9876543210fedcba9876543210"
+        authority_secret_name   = "pipesor-authority"
+      }
+    }
+  }
+  override_resource {
+    target          = module.resource_group.module.resource_group.azapi_resource.this
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.network
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.Network/virtualNetworks/vnet-pipesor-dev" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.subnet
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.Network/virtualNetworks/vnet-pipesor-dev/subnets/snet-pipesor-dev" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.workspace
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.OperationalInsights/workspaces/log-pipesor-dev" }
+  }
+  override_resource {
+    target          = module.container_platform[0].azapi_resource.environment
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.App/managedEnvironments/caepipesordev" }
+  }
+  override_resource {
+    target          = module.postgresql[0].azapi_resource.subnet
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.Network/virtualNetworks/vnet-pipesor-dev/subnets/snet-pipesor-dev-postgresql" }
+  }
+  override_resource {
+    target          = module.postgresql[0].azapi_resource.dns
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.Network/privateDnsZones/pipesor-dev.postgres.database.azure.com" }
+  }
+  override_resource {
+    target          = module.postgresql[0].azapi_resource.server
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.DBforPostgreSQL/flexibleServers/test-pipesor-dev-pg", output = { properties = { fullyQualifiedDomainName = "fixture.postgres.database.azure.com" } } }
+  }
+  override_resource {
+    target          = module.service_bus[0].azapi_resource.namespace
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.ServiceBus/namespaces/test-pipesor-dev-bus" }
+  }
+  override_resource {
+    target          = module.application_insights[0].azapi_resource.component
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.Insights/components/appipipesordev", output = { properties = { ConnectionString = "synthetic-routing-fixture" } } }
+  }
+  override_resource {
+    target          = module.foundry[0].azapi_resource.account
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.CognitiveServices/accounts/test-pipesor-dev-ai", output = { properties = { endpoint = "https://synthetic.cognitiveservices.azure.com/" } } }
+  }
+  override_resource {
+    target          = module.foundry[0].azapi_resource.project
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.CognitiveServices/accounts/test-pipesor-dev-ai/projects/pipesor-dev" }
+  }
+  override_resource {
+    target          = module.static_web_app[0].azapi_resource.site
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.Web/staticSites/test-pipesor-dev-web", output = { properties = { defaultHostname = "synthetic.azurestaticapps.net" } } }
+  }
+  override_resource {
+    target          = module.key_vault[0].azapi_resource.vault["app_material"]
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.KeyVault/vaults/test-pipesor-dev-app", output = { properties = { vaultUri = "https://test-pipesor-dev-app.vault.azure.net/" } } }
+  }
+  override_resource {
+    target          = module.key_vault[0].azapi_resource.vault["custody"]
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.KeyVault/vaults/test-pipesor-dev-usr", output = { properties = { vaultUri = "https://test-pipesor-dev-usr.vault.azure.net/" } } }
+  }
+  override_resource {
+    target          = module.key_vault[0].azapi_resource.custody_role[0]
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/providers/Microsoft.Authorization/roleDefinitions/55555555-5555-5555-5555-555555555555" }
+  }
+  override_resource {
+    target          = module.service_bus[0].azapi_resource.topic
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.ServiceBus/namespaces/test-pipesor-dev-bus/topics/workflow-evidence", name = "workflow-evidence" }
+  }
+  override_resource {
+    target          = module.service_bus[0].azapi_resource.subscription
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.ServiceBus/namespaces/test-pipesor-dev-bus/topics/workflow-evidence/subscriptions/fixture" }
+  }
+  override_resource {
+    target          = module.workloads[0].azapi_resource.identity
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.ManagedIdentity/userAssignedIdentities/fixture", output = { properties = { principalId = "55555555-5555-5555-5555-555555555555", clientId = "66666666-6666-6666-6666-666666666666" } } }
+  }
+  override_data {
+    target = module.workloads[0].data.azapi_resource.environment
+    values = { output = { properties = { defaultDomain = "fixture.workloadregion.azurecontainerapps.io" } } }
+  }
+
+  assert {
+    condition     = output.workloads.callback_url == "https://ingestion.fixture.workloadregion.azurecontainerapps.io/api/v1/auth/github/callback"
+    error_message = "The GitHub App callback is the Ingestion external URL."
+  }
+  assert {
+    condition     = output.workloads.urls["log-event"] == "https://log-event.internal.fixture.workloadregion.azurecontainerapps.io"
+    error_message = "Internal workloads are reached through their internal HTTPS FQDN."
+  }
+}

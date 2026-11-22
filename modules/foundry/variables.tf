@@ -22,6 +22,12 @@ variable "configuration" {
     account_name = string
     project_name = string
     location     = string
+    deployments = optional(map(object({
+      model_name    = string
+      model_version = string
+      sku_name      = string
+      capacity      = number
+    })), {})
   })
   nullable = false
   validation {
@@ -35,5 +41,13 @@ variable "configuration" {
   validation {
     condition     = can(regex("^[a-z][a-z0-9]+$", var.configuration.location))
     error_message = "Supply an explicit lowercase Azure region code."
+  }
+  validation {
+    condition = alltrue([for name, deployment in var.configuration.deployments :
+      can(regex("^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$", name)) && length(trimspace(deployment.model_version)) > 0 &&
+      contains(["Standard", "GlobalStandard", "DataZoneStandard"], deployment.sku_name) &&
+      deployment.capacity >= 1 && floor(deployment.capacity) == deployment.capacity
+    ])
+    error_message = "Each deployment needs a 3-64 character lowercase name, a pinned model version, a Standard, GlobalStandard or DataZoneStandard SKU and a positive integer capacity (thousands of tokens per minute)."
   }
 }

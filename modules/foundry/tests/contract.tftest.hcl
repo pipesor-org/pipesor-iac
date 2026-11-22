@@ -103,3 +103,23 @@ run "reject_resource_group" {
   variables { resource_group_id = "/invalid" }
   expect_failures = [var.resource_group_id]
 }
+
+run "deployments_are_pinned" {
+  command = plan
+  variables {
+    environment       = "dev"
+    resource_group_id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev"
+    configuration = {
+      account_name = "ai-fixture"
+      project_name = "pipesor-dev"
+      location     = "testregion"
+      deployments = {
+        pipesor-dev-diagnostics = { model_name = "gpt-4o", model_version = "2024-11-20", sku_name = "DataZoneStandard", capacity = 20 }
+      }
+    }
+  }
+  assert {
+    condition     = azapi_resource.deployment["pipesor-dev-diagnostics"].body.properties.versionUpgradeOption == "NoAutoUpgrade" && azapi_resource.deployment["pipesor-dev-diagnostics"].body.sku.capacity == 20
+    error_message = "Model versions stay pinned and capacity follows configuration."
+  }
+}

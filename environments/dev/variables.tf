@@ -33,10 +33,20 @@ variable "container_platform" {
 }
 
 variable "service_bus" {
-  description = "Opt in to the approved public, Entra-only Standard namespace; null provisions none. Removing a deployed configuration proposes destruction."
+  description = "Opt in to the approved public, Entra-only Standard namespace, optionally with the runtime manifest topology; null provisions none. Removing a deployed configuration proposes destruction."
   type = object({
     namespace_name = string
     location       = string
+    topology = optional(object({
+      topic_name                 = string
+      message_ttl                = string
+      duplicate_detection_window = string
+      subscriptions = map(object({
+        sql_filter         = string
+        lock_duration      = string
+        max_delivery_count = number
+      }))
+    }))
   })
   default = null
 }
@@ -70,11 +80,17 @@ variable "application_insights_enabled" {
 }
 
 variable "foundry" {
-  description = "Opt in to one public Entra-only Foundry account/project; no models or runtime grants. Removing deployed configuration proposes destruction."
+  description = "Opt in to one public Entra-only Foundry account/project with optional pinned model deployments; no runtime grants. Removing deployed configuration proposes destruction."
   type = object({
     account_name = string
     project_name = string
     location     = string
+    deployments = optional(map(object({
+      model_name    = string
+      model_version = string
+      sku_name      = string
+      capacity      = number
+    })), {})
   })
   default = null
 }
@@ -148,4 +164,44 @@ variable "key_vault" {
     }))
   })
   default = null
+}
+
+variable "workloads" {
+  description = "Opt in to the seven service Container Apps, their identities, signing keys, role assignments and operator jobs (runtime manifest). Requires every foundation, the topic, both vaults and the Static Web App. Secret payloads are created by the operator in Key Vault first. Removing it proposes destruction."
+  type = object({
+    platform_tenant_id      = string
+    database                = string
+    chat_deployment         = string
+    embedding_deployment    = string
+    embedding_model_version = string
+    images                  = map(string)
+    registry = object({
+      server               = string
+      username             = string
+      password_secret_name = string
+    })
+    github = object({
+      app_id                  = string
+      capture_domain          = string
+      private_key_secret_name = string
+      private_key_version     = string
+      client_secret_name      = string
+      client_secret_version   = string
+      authority_secret_name   = string
+    })
+  })
+  default = null
+  validation {
+    condition = var.workloads == null || (
+      var.container_platform != null && var.postgresql != null && var.foundry != null && var.static_web_app != null &&
+      try(var.service_bus.topology != null, false) && try(var.key_vault.custody != null, false)
+    )
+    error_message = "Workloads require container_platform, postgresql, foundry, static_web_app, a Service Bus topology and a Key Vault with a custody vault."
+  }
+  validation {
+    condition = var.workloads == null || try(
+      contains(keys(var.foundry.deployments), var.workloads.chat_deployment) && contains(keys(var.foundry.deployments), var.workloads.embedding_deployment), false
+    )
+    error_message = "The chat and embedding deployments must be Foundry deployments declared in var.foundry.deployments."
+  }
 }
