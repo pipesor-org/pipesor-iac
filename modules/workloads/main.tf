@@ -305,6 +305,8 @@ locals {
       "GRANT CONNECT, CREATE ON DATABASE ${var.configuration.postgresql.database} TO ${join(", ", [for w in local.with_database : "\"${local.identity[w]}\""])};",
       "CREATE SCHEMA IF NOT EXISTS evidence;",
       "GRANT USAGE, CREATE ON SCHEMA evidence TO \"${local.identity["log-event"]}\", \"${local.identity["correlation"]}\";",
+      # Alembic keeps RAG's version table in public, where PostgreSQL 15+ grants no CREATE by default.
+      "GRANT USAGE, CREATE ON SCHEMA public TO \"${local.identity["rag"]}\";",
     ],
   ))
   token = "$IDENTITY_ENDPOINT?api-version=2019-08-01&resource=https://ossrdbms-aad.database.windows.net&client_id=$AZURE_CLIENT_ID"
