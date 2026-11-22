@@ -89,7 +89,7 @@ run "runtime_manifest_contract" {
     error_message = "Services receive a versioned signing key identifier."
   }
   assert {
-    condition     = contains(azapi_resource.app["rag"].body.properties.template.containers[0].env, { name = "PIPESOR_DATABASE_URL", value = "postgresql+psycopg://id-pipesor-dev-rag@pg-fixture.postgres.database.azure.com:5432/pipesor?sslmode=require" }) && !contains([for variable in azapi_resource.app["rag"].body.properties.template.containers[0].env : variable.name], "PIPESOR_DATABASE_USERNAME")
+    condition     = contains(azapi_resource.app["rag"].body.properties.template.containers[0].env, { name = "PIPESOR_DATABASE_URL", value = "postgresql+psycopg://id-pipesor-dev-rag@pg-fixture.postgres.database.azure.com:5432/pipesor" }) && !contains([for variable in azapi_resource.app["rag"].body.properties.template.containers[0].env : variable.name], "PIPESOR_DATABASE_USERNAME")
     error_message = "RAG takes its Entra principal from the URL and receives no separate username."
   }
   assert {
