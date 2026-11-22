@@ -202,7 +202,7 @@ resource "azapi_resource" "app" {
       ingress = {
         external      = contains(local.external, each.key)
         targetPort    = 8080
-        transport     = "auto"
+        transport     = "Auto" # ARM's stored casing (avoids a perpetual diff)
         allowInsecure = false
         traffic       = [{ latestRevision = true, weight = 100 }]
       }
@@ -219,10 +219,11 @@ resource "azapi_resource" "app" {
         image     = var.configuration.images[each.key]
         resources = contains(local.java, each.key) ? { cpu = 0.5, memory = "1Gi" } : { cpu = 0.25, memory = "0.5Gi" }
         env       = local.env[each.key]
+        # Listed in ARM's stored order (Liveness, Readiness, Startup) to avoid a perpetual diff.
         probes = [
-          { type = "Startup", httpGet = { path = local.health[each.key].live, port = 8080 }, periodSeconds = 5, failureThreshold = 36 },
           { type = "Liveness", httpGet = { path = local.health[each.key].live, port = 8080 }, periodSeconds = 15, failureThreshold = 3 },
           { type = "Readiness", httpGet = { path = local.health[each.key].ready, port = 8080 }, periodSeconds = 10, failureThreshold = 3 },
+          { type = "Startup", httpGet = { path = local.health[each.key].live, port = 8080 }, periodSeconds = 5, failureThreshold = 36 },
         ]
       }]
       # One replica each for the MVP: consumers and workers stay up; leases already guard concurrency.
@@ -252,7 +253,7 @@ resource "azapi_resource" "dashboard" {
       ingress = {
         external      = true
         targetPort    = 8080
-        transport     = "auto"
+        transport     = "Auto" # ARM's stored casing (avoids a perpetual diff)
         allowInsecure = false
         traffic       = [{ latestRevision = true, weight = 100 }]
       }
@@ -401,7 +402,7 @@ resource "azapi_resource" "rag_migrations" {
       resources = { cpu = 0.25, memory = "0.5Gi" }
       command   = ["/bin/sh", "-ec"]
       args = [<<-SCRIPT
-        export PIPESOR_DATABASE_PASSWORD="$(python -c "from azure.identity import ManagedIdentityCredential as C; print(C().get_token('https://ossrdbms-aad.database.windows.net/.default').token)")"
+        export PIPESOR_DATABASE_PASSWORD="$(python -c "import os; from azure.identity import ManagedIdentityCredential as C; print(C(client_id=os.environ['AZURE_CLIENT_ID']).get_token('https://ossrdbms-aad.database.windows.net/.default').token)")"
         alembic upgrade head
       SCRIPT
       ]
