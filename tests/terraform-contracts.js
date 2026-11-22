@@ -91,6 +91,7 @@ export function checkCallerPlans(directory, stdout) {
     assert.deepEqual(foundryPlan.output_changes.foundry.after, {
       account_id: account.id, account_name: account.name, project_id: project.id,
       project_name: project.name, location: 'airegion', endpoint: account.output.properties.endpoint,
+      deployments: {},
     }, 'Foundry caller interface');
     const telemetryPlan = plan('opt_in_application_insights_contract');
     const telemetry = resource(telemetryPlan, 'module.application_insights[0].azapi_resource.component');
