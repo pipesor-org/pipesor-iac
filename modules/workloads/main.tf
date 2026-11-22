@@ -37,7 +37,7 @@ locals {
     crypto_user     = "12338af0-0e69-4776-bea7-57ae8d297424"
     secrets_user    = "4633458b-17de-408a-b874-0445c86b69e6"
     secrets_officer = "b86a8fe4-44ce-4948-aee5-eccb2c155cd7"
-    bus_sender      = "69a216fc-b8fb-44d8-bc22-1f3c2552a64d"
+    bus_sender      = "69a216fc-b8fb-44d8-bc22-1f3c2cd27a39"
     bus_receiver    = "4f6d3b9b-027b-4f4c-9142-0e5a2a2247e0"
     openai_user     = "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd"
   }
