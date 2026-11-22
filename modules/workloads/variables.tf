@@ -28,7 +28,6 @@ variable "configuration" {
     location                 = string
     platform_tenant_id       = string
     container_environment_id = string
-    dashboard_origin         = string
     images                   = map(string)
     registry = object({
       server               = string
@@ -83,14 +82,10 @@ variable "configuration" {
     error_message = "The Pipesor platform tenant (ADR-022 tid) must be a UUID."
   }
   validation {
-    condition = length(setsubtract(["ingestion", "pipeline", "log-event", "nlp", "correlation", "recommendation", "rag"], keys(var.configuration.images))) == 0 && alltrue([
+    condition = length(setsubtract(["ingestion", "pipeline", "log-event", "nlp", "correlation", "recommendation", "rag", "dashboard"], keys(var.configuration.images))) == 0 && alltrue([
       for image in values(var.configuration.images) : can(regex("^[a-z0-9.-]+/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$", image))
     ])
-    error_message = "Every workload needs an image pinned by digest (registry/repository@sha256:...)."
-  }
-  validation {
-    condition     = can(regex("^https://[a-z0-9.-]+$", var.configuration.dashboard_origin))
-    error_message = "The dashboard origin must be an https origin without path."
+    error_message = "Every workload and the dashboard need an image pinned by digest (registry/repository@sha256:...)."
   }
   validation {
     condition     = alltrue([for version in [var.configuration.github.private_key_version, var.configuration.github.client_secret_version] : can(regex("^[0-9a-f]{32}$", version))])

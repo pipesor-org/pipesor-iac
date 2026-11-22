@@ -81,7 +81,6 @@ module "workloads" {
     location                 = var.container_platform.location
     platform_tenant_id       = var.workloads.platform_tenant_id
     container_environment_id = module.container_platform[0].platform.environment_id
-    dashboard_origin         = "https://${module.static_web_app[0].site.default_hostname}"
     images                   = var.workloads.images
     registry                 = var.workloads.registry
     key_vault                = { id = module.key_vault[0].vaults["app_material"].id, uri = module.key_vault[0].vaults["app_material"].uri }

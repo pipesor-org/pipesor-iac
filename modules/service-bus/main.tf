@@ -47,12 +47,12 @@ resource "azapi_resource" "subscription" {
   } }
 }
 
-# Azure creates a match-all "$Default" rule with every subscription; replacing it is what makes the
-# subscription receive only its event type (an extra rule would be OR-ed with match-all).
+# Subscriptions created through ARM have no rules (no implicit "$Default" match-all) and receive nothing until a
+# rule exists; this single SQL rule selects the subscription's event type, as in the local emulator topology.
 resource "azapi_resource" "filter" {
   for_each  = azapi_resource.subscription
   type      = "Microsoft.ServiceBus/namespaces/topics/subscriptions/rules@2024-01-01"
-  name      = "$Default"
+  name      = "event-type"
   parent_id = each.value.id
   body = { properties = {
     filterType = "SqlFilter"

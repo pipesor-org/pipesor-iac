@@ -167,7 +167,7 @@ variable "key_vault" {
 }
 
 variable "workloads" {
-  description = "Opt in to the seven service Container Apps, their identities, signing keys, role assignments and operator jobs (runtime manifest). Requires every foundation, the topic, both vaults and the Static Web App. Secret payloads are created by the operator in Key Vault first. Removing it proposes destruction."
+  description = "Opt in to the seven service Container Apps, their identities, signing keys, role assignments and operator jobs (runtime manifest). Requires every foundation, the topic and both vaults; the dashboard is served by its own Container App. Secret payloads are created by the operator in Key Vault first. Removing it proposes destruction."
   type = object({
     platform_tenant_id      = string
     database                = string
@@ -193,10 +193,10 @@ variable "workloads" {
   default = null
   validation {
     condition = var.workloads == null || (
-      var.container_platform != null && var.postgresql != null && var.foundry != null && var.static_web_app != null &&
+      var.container_platform != null && var.postgresql != null && var.foundry != null &&
       try(var.service_bus.topology != null, false) && try(var.key_vault.custody != null, false)
     )
-    error_message = "Workloads require container_platform, postgresql, foundry, static_web_app, a Service Bus topology and a Key Vault with a custody vault."
+    error_message = "Workloads require container_platform, postgresql, foundry, a Service Bus topology and a Key Vault with a custody vault."
   }
   validation {
     condition = var.workloads == null || try(

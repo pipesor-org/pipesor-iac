@@ -48,16 +48,14 @@ foundry = {
     pipesor-dev-embeddings  = { model_name = "text-embedding-3-small", model_version = "1", sku_name = "DataZoneStandard", capacity = 20 }
   }
 }
-static_web_app = {
-  name     = "swa-pipesor-dev-04f339b7"
-  location = "westus2" # Static Web Apps is not offered in westus3; content is global.
-}
+# Static Web Apps is not offered in the subscription's allowed regions; the dashboard is a Container App (workloads).
+static_web_app = null
 # App material (signing keys, GitHub App material, registry token, authority document) and OAuth custody vaults.
 key_vault = {
   app_material_name    = "kv-pipesor-dev-04f339b7"
   location             = "westus3"
   tenant_id            = "0e0cb060-09ad-49f5-a005-68b9b49aa1f6"
-  allowed_public_ipv4s = ["REPLACE_WITH_OPERATOR_PUBLIC_IPV4"]
+  allowed_public_ipv4s = ["REPLACE_WITH_OPERATOR_PUBLIC_IPV4/32"]
   custody              = { name = "kv-pipesor-dev-usr" }
 }
 # Phase 2 only, after the operator stored the secrets (docs/dev-runtime-deployment.md).
@@ -76,6 +74,7 @@ workloads = null
 #     correlation    = "ghcr.io/pipesor-org/pipesor-evidence-correlation-engine@sha256:REPLACE"
 #     recommendation = "ghcr.io/pipesor-org/pipesor-recommendation-service@sha256:REPLACE"
 #     rag            = "ghcr.io/pipesor-org/pipesor-rag-retrieval@sha256:REPLACE"
+#     dashboard      = "ghcr.io/pipesor-org/pipesor-frontend@sha256:REPLACE"
 #   }
 #   registry = { server = "ghcr.io", username = "REPLACE_WITH_GITHUB_USER", password_secret_name = "ghcr-read-token" }
 #   github = {

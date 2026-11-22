@@ -26,10 +26,12 @@ locals {
   subscriptions = { pipeline = "pipeline", log-event = "log-event", nlp = "nlp" }
 
   url      = { for w in local.workloads : w => contains(local.external, w) ? "https://${w}.${local.domain}" : "https://${w}.internal.${local.domain}" }
-  identity = { for w in concat(local.workloads, ["db-admin"]) : w => "id-pipesor-${var.environment}-${w}" }
-  key_name = { for k in concat(local.workloads, ["session"]) : k => "pipesor-${k}-signing" }
-  key_uri  = { for k, name in local.key_name : k => "${trimsuffix(var.configuration.key_vault.uri, "/")}/keys/${name}" }
-  vault    = trimsuffix(var.configuration.key_vault.uri, "/")
+  identity = { for w in concat(local.workloads, ["db-admin", "dashboard"]) : w => "id-pipesor-${var.environment}-${w}" }
+  # The dashboard is a static SPA served by its own Container App (Static Web Apps is not offered in the allowed regions).
+  dashboard_origin = "https://dashboard.${local.domain}"
+  key_name         = { for k in concat(local.workloads, ["session"]) : k => "pipesor-${k}-signing" }
+  key_uri          = { for k, name in local.key_name : k => "${trimsuffix(var.configuration.key_vault.uri, "/")}/keys/${name}" }
+  vault            = trimsuffix(var.configuration.key_vault.uri, "/")
 
   roles = {
     crypto_user     = "12338af0-0e69-4776-bea7-57ae8d297424"
@@ -42,7 +44,7 @@ locals {
   # Least-privilege scopes from the runtime manifest "Azure identities and roles" table.
   assignments = merge(
     { for w in local.workloads : "${w}-signing" => { principal = w, role = "crypto_user", scope = "${var.configuration.key_vault.id}/keys/${local.key_name[w]}" } },
-    { for w in local.workloads : "${w}-registry" => { principal = w, role = "secrets_user", scope = "${var.configuration.key_vault.id}/secrets/${var.configuration.registry.password_secret_name}" } },
+    { for w in concat(local.workloads, ["dashboard"]) : "${w}-registry" => { principal = w, role = "secrets_user", scope = "${var.configuration.key_vault.id}/secrets/${var.configuration.registry.password_secret_name}" } },
     { for w, subscription in local.subscriptions : "${w}-receive" => { principal = w, role = "bus_receiver", scope = var.configuration.service_bus.subscription_ids[subscription] } },
     { for w in ["recommendation", "rag"] : "${w}-foundry" => { principal = w, role = "openai_user", scope = var.configuration.foundry.account_id } },
     { for name in [var.configuration.github.private_key_secret_name, var.configuration.github.client_secret_name, var.configuration.github.authority_secret_name] :
@@ -80,7 +82,7 @@ locals {
     [for target in local.outbound[w] : { name = "PIPESOR_ENDPOINTS_${upper(replace(target, "-", ""))}", value = local.url[target] }],
     contains(local.human_apis, w) ? [
       { name = "PIPESOR_SECURITY_SESSION_JWKSURI", value = "${local.url["ingestion"]}/.well-known/jwks.json" },
-      { name = "PIPESOR_DASHBOARD_ORIGIN", value = var.configuration.dashboard_origin },
+      { name = "PIPESOR_DASHBOARD_ORIGIN", value = local.dashboard_origin },
     ] : [],
     contains(local.java, w) ? [
       { name = "PIPESOR_DATABASE_URL", value = local.jdbc[w] },
@@ -229,6 +231,52 @@ resource "azapi_resource" "app" {
   } }
   response_export_values = ["properties.configuration.ingress.fqdn"]
   depends_on             = [azapi_resource.role]
+}
+
+# Static dashboard (nginx, unprivileged, port 8080); its API URLs are baked into the image at build time.
+resource "azapi_resource" "dashboard" {
+  type      = "Microsoft.App/containerApps@2025-07-01"
+  name      = "dashboard"
+  parent_id = var.resource_group_id
+  location  = var.configuration.location
+  tags      = { environment = var.environment, workload = "dashboard" }
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azapi_resource.identity["dashboard"].id]
+  }
+  body = { properties = {
+    environmentId       = var.configuration.container_environment_id
+    workloadProfileName = "Consumption"
+    configuration = {
+      activeRevisionsMode = "Single"
+      ingress = {
+        external      = true
+        targetPort    = 8080
+        transport     = "auto"
+        allowInsecure = false
+        traffic       = [{ latestRevision = true, weight = 100 }]
+      }
+      registries = local.registry
+      secrets = [{
+        name        = "registry-token"
+        keyVaultUrl = "${local.vault}/secrets/${var.configuration.registry.password_secret_name}"
+        identity    = azapi_resource.identity["dashboard"].id
+      }]
+    }
+    template = {
+      containers = [{
+        name      = "dashboard"
+        image     = var.configuration.images["dashboard"]
+        resources = { cpu = 0.25, memory = "0.5Gi" }
+        probes = [
+          { type = "Liveness", httpGet = { path = "/", port = 8080 }, periodSeconds = 30, failureThreshold = 3 },
+          { type = "Readiness", httpGet = { path = "/", port = 8080 }, periodSeconds = 10, failureThreshold = 3 },
+        ]
+      }]
+      scale = { minReplicas = 1, maxReplicas = 1 }
+    }
+  } }
+  depends_on = [azapi_resource.role]
 }
 
 locals {
