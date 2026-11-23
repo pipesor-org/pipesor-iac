@@ -117,4 +117,50 @@ run "runtime_manifest_contract" {
     condition     = strcontains(azapi_resource.database_setup.body.properties.template.containers[0].args[0], "pgaadauth_create_principal_with_oid('id-pipesor-dev-rag'") && strcontains(azapi_resource.database_setup.body.properties.template.containers[0].args[0], "\nSQL") && !strcontains(azapi_resource.database_setup.body.properties.template.containers[0].args[0], "$$")
     error_message = "The database setup job creates one Entra principal per database workload and closes its SQL heredoc on its own line."
   }
+  assert {
+    condition     = !anytrue([for variable in azapi_resource.app["ingestion"].body.properties.template.containers[0].env : startswith(variable.name, "PIPESOR_GITHUB_WEBHOOK")]) && !contains(keys(azapi_resource.role), "ingestion-secret-github-webhook-secret")
+    error_message = "Without a pinned webhook secret version Ingestion keeps the webhook disabled and cannot read the secret."
+  }
+}
+
+run "webhook_enabled_with_pinned_secret" {
+  command = plan
+  variables {
+    configuration = merge(var.configuration, { github = merge(var.configuration.github, { webhook_secret_version = "00112233445566778899aabbccddeeff" }) })
+  }
+  override_resource {
+    target          = azapi_resource.identity
+    override_during = plan
+    values          = { id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.ManagedIdentity/userAssignedIdentities/fixture", output = { properties = { principalId = "55555555-5555-5555-5555-555555555555", clientId = "66666666-6666-6666-6666-666666666666" } } }
+  }
+  override_resource {
+    target          = azapi_resource.signing_key
+    override_during = plan
+    values          = { output = { properties = { keyUriWithVersion = "https://kv-app.vault.azure.net/keys/fixture/0123456789abcdef0123456789abcdef" } } }
+  }
+  override_data {
+    target = data.azapi_resource.environment
+    values = { output = { properties = { defaultDomain = "fixture.workloadregion.azurecontainerapps.io" } } }
+  }
+
+  assert {
+    condition = alltrue([for variable in [
+      { name = "PIPESOR_GITHUB_WEBHOOK_ENABLED", value = "true" },
+      { name = "PIPESOR_GITHUB_WEBHOOK_SECRET_NAME", value = "github-webhook-secret" },
+      { name = "PIPESOR_GITHUB_WEBHOOK_SECRET_VERSION", value = "00112233445566778899aabbccddeeff" },
+    ] : contains(azapi_resource.app["ingestion"].body.properties.template.containers[0].env, variable)])
+    error_message = "A pinned webhook secret version enables the webhook with that exact secret."
+  }
+  assert {
+    condition     = azapi_resource.role["ingestion-secret-github-webhook-secret"].parent_id == "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-pipesor-dev/providers/Microsoft.KeyVault/vaults/kv-app/secrets/github-webhook-secret" && !anytrue([for name, app in azapi_resource.app : name != "ingestion" && anytrue([for variable in app.body.properties.template.containers[0].env : startswith(variable.name, "PIPESOR_GITHUB_WEBHOOK")])])
+    error_message = "Only Ingestion receives the webhook settings and may read only the webhook secret."
+  }
+}
+
+run "webhook_secret_version_must_be_pinned" {
+  command = plan
+  variables {
+    configuration = merge(var.configuration, { github = merge(var.configuration.github, { webhook_secret_version = "latest" }) })
+  }
+  expect_failures = [var.configuration]
 }

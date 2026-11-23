@@ -62,6 +62,7 @@ Store in the app material vault and record the returned versions in `workloads.g
 | `github-app-client-secret` | GitHub App client secret |
 | `ghcr-read-token` | the `read:packages` token |
 | `pipesor-authority` | ADR-023 authority document (repository and human admissions), same format as the local `authority.json` |
+| `github-webhook-secret` | Optional: random webhook secret shared with the GitHub App (see [GitHub webhook](#github-webhook)) |
 
 Use `az keyvault secret set --vault-name kv-pipesor-dev-04f339b7 --name <name> --file <path>`
 from the allowed IPv4 and delete local copies you created for the upload.
@@ -94,6 +95,35 @@ not affected.
 
 Dev keeps `pipesor-local-pilot`, inherited from the local pilot, for that reason. A new environment
 (for example production) should use its own name, such as `pipesor-prod`.
+
+### GitHub webhook
+
+Without the webhook, a capture starts only when someone requests the analysis of a run from the dashboard
+(`POST …/runs/{run}/attempts/{attempt}/analysis`). With it, GitHub delivers signed `workflow_run`
+events to `https://ingestion.<domain>/webhooks/v1/github/workflow-runs`. Ingestion verifies the HMAC
+signature, selects only `completed` runs, and accepts a run only when its workflow is a registered
+capture scope; other workflows are answered `403` and nothing is captured.
+
+The webhook is configured on the GitHub App, so it fires for every installation. Enable it in this order:
+
+1. **Secret (operator).** Generate it on the allowed IPv4 without printing it, store it, and record the
+   returned version (last segment of the `id`):
+
+   ```bash
+   umask 077; openssl rand -hex 32 > ~/.local/state/pipesor-dev-bootstrap/webhook-secret
+   az keyvault secret set --vault-name kv-pipesor-dev-04f339b7 --name github-webhook-secret \
+     --file ~/.local/state/pipesor-dev-bootstrap/webhook-secret --query id -o tsv
+   ```
+
+2. **Ingestion.** Set `workloads.github.webhook_secret_version`, plan, review (Ingestion and the authority
+   import job gain `PIPESOR_GITHUB_WEBHOOK_*`; one `secrets_user` assignment scoped to that secret) and
+   apply. Check that an unsigned `POST` to the webhook path is rejected (`401`/`400`, not `404`).
+3. **GitHub App (owner).** In the App settings set the webhook URL above, the same secret, mark it
+   active and subscribe to the **Workflow run** event. The first delivery under *Advanced → Recent
+   Deliveries* must succeed. Then delete the local secret file (`shred -u`).
+
+To disable it, deactivate the webhook on the App first, then remove `webhook_secret_version` with a new
+reviewed plan. Manual analysis from the dashboard keeps working throughout.
 
 ## Phase 4 — dashboard
 

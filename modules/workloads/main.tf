@@ -48,7 +48,8 @@ locals {
     { for w in concat(local.workloads, ["dashboard"]) : "${w}-registry" => { principal = w, role = "secrets_user", scope = "${var.configuration.key_vault.id}/secrets/${var.configuration.registry.password_secret_name}" } },
     { for w, subscription in local.subscriptions : "${w}-receive" => { principal = w, role = "bus_receiver", scope = var.configuration.service_bus.subscription_ids[subscription] } },
     { for w in ["recommendation", "rag"] : "${w}-foundry" => { principal = w, role = "openai_user", scope = var.configuration.foundry.account_id } },
-    { for name in [var.configuration.github.private_key_secret_name, var.configuration.github.client_secret_name, var.configuration.github.authority_secret_name] :
+    { for name in concat([var.configuration.github.private_key_secret_name, var.configuration.github.client_secret_name, var.configuration.github.authority_secret_name],
+      var.configuration.github.webhook_secret_version == null ? [] : [var.configuration.github.webhook_secret_name]) :
     "ingestion-secret-${name}" => { principal = "ingestion", role = "secrets_user", scope = "${var.configuration.key_vault.id}/secrets/${name}" } },
     {
       ingestion-session = { principal = "ingestion", role = "crypto_user", scope = "${var.configuration.key_vault.id}/keys/${local.key_name["session"]}" }
@@ -105,6 +106,12 @@ locals {
       { name = "PIPESOR_GITHUB_CLIENT_SECRET_NAME", value = var.configuration.github.client_secret_name },
       { name = "PIPESOR_GITHUB_CLIENT_SECRET_VERSION", value = var.configuration.github.client_secret_version },
       { name = "PIPESOR_GITHUB_CUSTODY_VAULT_URL", value = trimsuffix(var.configuration.custody_vault.uri, "/") },
+    ] : [],
+    # GitHub delivers signed workflow_run events to /webhooks/v1/github/workflow-runs once the App webhook is active.
+    w == "ingestion" && var.configuration.github.webhook_secret_version != null ? [
+      { name = "PIPESOR_GITHUB_WEBHOOK_ENABLED", value = "true" },
+      { name = "PIPESOR_GITHUB_WEBHOOK_SECRET_NAME", value = var.configuration.github.webhook_secret_name },
+      { name = "PIPESOR_GITHUB_WEBHOOK_SECRET_VERSION", value = var.configuration.github.webhook_secret_version },
     ] : [],
     w == "recommendation" ? [
       { name = "PIPESOR_INFERENCE_ENDPOINT", value = local.foundry_origin },
