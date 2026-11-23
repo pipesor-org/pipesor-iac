@@ -69,6 +69,8 @@ variable "configuration" {
       client_secret_name      = string
       client_secret_version   = string
       authority_secret_name   = string
+      # Optional GitHub App slug; the dashboard links to its installation page when set.
+      app_slug = optional(string)
     })
   })
   nullable = false
@@ -87,6 +89,11 @@ variable "configuration" {
     ])
     error_message = "Every workload and the dashboard need an image pinned by digest (registry/repository@sha256:...)."
   }
+  validation {
+    condition     = var.configuration.github.app_slug == null || can(regex("^[a-z0-9][a-z0-9-]*$", var.configuration.github.app_slug))
+    error_message = "github.app_slug must be a GitHub App slug (lowercase letters, digits and hyphens)."
+  }
+
   validation {
     condition     = alltrue([for version in [var.configuration.github.private_key_version, var.configuration.github.client_secret_version] : can(regex("^[0-9a-f]{32}$", version))])
     error_message = "GitHub App material must be pinned to exact Key Vault secret versions."

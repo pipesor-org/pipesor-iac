@@ -85,6 +85,7 @@ workloads = null
 #     client_secret_name      = "github-app-client-secret"
 #     client_secret_version   = "REPLACE_WITH_32_HEX_SECRET_VERSION"
 #     authority_secret_name   = "pipesor-authority"
+#     app_slug                = "pipesor-dev" # optional: dashboard link to the App installation page
 #   }
 # }
 # This handoff creates no resources and is unnecessary for foundation provisioning.

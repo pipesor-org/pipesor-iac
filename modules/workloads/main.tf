@@ -272,6 +272,15 @@ resource "azapi_resource" "dashboard" {
         name      = "dashboard"
         image     = var.configuration.images["dashboard"]
         resources = { cpu = 0.25, memory = "0.5Gi" }
+        # Runtime configuration: the image renders /config.js and its CSP connect-src from these at startup,
+        # so the same dashboard digest is promoted unchanged across environments.
+        env = concat([
+          { name = "PIPESOR_INGESTION_URL", value = local.url["ingestion"] },
+          { name = "PIPESOR_PIPELINE_URL", value = local.url["pipeline"] },
+          { name = "PIPESOR_RECOMMENDATION_URL", value = local.url["recommendation"] },
+          ], var.configuration.github.app_slug == null ? [] : [
+          { name = "PIPESOR_GITHUB_APP_INSTALL_URL", value = "https://github.com/apps/${var.configuration.github.app_slug}/installations/new" },
+        ])
         probes = [
           { type = "Liveness", httpGet = { path = "/", port = 8080 }, periodSeconds = 30, failureThreshold = 3 },
           { type = "Readiness", httpGet = { path = "/", port = 8080 }, periodSeconds = 10, failureThreshold = 3 },

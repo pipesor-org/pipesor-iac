@@ -40,7 +40,6 @@ for subject in \
   'feat(API): change endpoint' \
   'fix: ' \
   'fix: Handle input' \
-  'fix: handle Input' \
   'fix: handle input.' \
   "Merge branch 'main'" \
   'Merge pull request #1 from pipesor-org/feature/example' \
