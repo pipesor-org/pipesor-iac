@@ -192,6 +192,9 @@ variable "workloads" {
       authority_secret_name   = string
       # Optional GitHub App slug; the dashboard links to its installation page when set.
       app_slug = optional(string)
+      # Optional pinned version of the webhook secret; when set, Ingestion accepts signed workflow_run deliveries.
+      webhook_secret_name    = optional(string, "github-webhook-secret")
+      webhook_secret_version = optional(string)
     })
   })
   default = null
