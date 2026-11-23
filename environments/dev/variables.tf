@@ -190,6 +190,8 @@ variable "workloads" {
       client_secret_name      = string
       client_secret_version   = string
       authority_secret_name   = string
+      # Optional GitHub App slug; the dashboard links to its installation page when set.
+      app_slug = optional(string)
     })
   })
   default = null

@@ -81,10 +81,23 @@ Services that started before step 1 restart on their failing probes and become r
 
 ## Phase 4 — dashboard
 
-The frontend CI publishes an nginx image of the built SPA to GHCR, with the three external API URLs
-(`https://ingestion|pipeline|recommendation.<domain>`) as build arguments; pin its digest as
-`workloads.images.dashboard`. Its origin `https://dashboard.<domain>` is the CORS origin every human
-API trusts and the redirect target after GitHub login.
+The frontend CI publishes an environment-independent nginx image of the SPA to GHCR; pin its digest as
+`workloads.images.dashboard`. The module sets `PIPESOR_INGESTION_URL`, `PIPESOR_PIPELINE_URL` and
+`PIPESOR_RECOMMENDATION_URL` (`https://ingestion|pipeline|recommendation.<domain>`) on the container, and
+`PIPESOR_GITHUB_APP_INSTALL_URL` when `workloads.github.app_slug` is set; the image renders `/config.js`
+and its CSP from them at startup and refuses to start without them. Apply this configuration before
+pinning a dashboard digest built after the runtime-configuration change (older digests ignore it). Its
+origin `https://dashboard.<domain>` is the CORS origin every human API trusts and the redirect target
+after GitHub login.
+
+## Updating, promoting and rolling back images
+
+Application repositories never deploy: this root owns every Container App image. Each successful
+`main` CI run of a service records `candidate-<run>-<attempt>/candidate.json` (source SHA, image,
+digest, CI run/attempt). To deploy it, set that `image@digest` in `workloads.images`, generate a fresh
+plan, review that only the expected Container App changes and apply it with the usual authorization.
+Promotion to a later environment reuses the same digest in that environment's root; rollback is a new
+reviewed plan with the earlier digest. Record the candidate manifest with the deployment record.
 
 ## Cost control
 
