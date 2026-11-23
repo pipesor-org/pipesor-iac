@@ -79,6 +79,22 @@ each to succeed (`az containerapp job start -g rg-pipesor-dev -n <job>`;
 
 Services that started before step 1 restart on their failing probes and become ready afterwards.
 
+### Capture domain
+
+`workloads.github.capture_domain` (`PIPESOR_GITHUB_CAPTURE_DOMAIN`) is an internal partition key of
+Ingestion's capture ledger, never shown to users. It is part of the immutable identity of capture
+receipts, observations and delivery aliases (V2 triggers) and of repository admissions and capture
+scopes (V4), and every machine scope in the `pipesor-authority` document repeats it.
+
+Choose it once per environment and do not change it afterwards. A new value does not rename data:
+it starts an empty partition, so Ingestion loses its analysis history, the authority document has to
+be rewritten and re-imported, and registered pipelines must re-sync their capture scopes. Repository
+admissions recover on the next read (ADR-024); Pipeline incidents and Recommendation diagnoses are
+not affected.
+
+Dev keeps `pipesor-local-pilot`, inherited from the local pilot, for that reason. A new environment
+(for example production) should use its own name, such as `pipesor-prod`.
+
 ## Phase 4 — dashboard
 
 The frontend CI publishes an environment-independent nginx image of the SPA to GHCR; pin its digest as
