@@ -75,10 +75,10 @@ does not connect to remote state. Validation and mocked plans do not prove Azure
 deployability, permissions, region availability, backend access or workload health.
 For the inactive deployment scaffold, run `bun test tests/deployment-scaffold.test.js`
 to check its disabled/manual/dev-only boundaries without credentials.
-The [Terraform workflow](.github/workflows/terraform.yml) runs these credential-free
-checks for all listed modules and roots on PRs and pushes to `main`, including
-future environment roots; validation does not select them for deployment. It has no Azure login,
-OIDC permission, plan artifact or deployment job.
+[CI](.github/workflows/ci.yml) runs these credential-free checks for all listed modules and
+roots on PRs and pushes to `main`, including future environment roots; validation does not
+select them for deployment. It has no Azure login, OIDC permission, plan artifact or deployment
+job. Its actions are pinned by commit SHA and Dependabot proposes updates.
 
 The test runner also inspects the effective mocked plans for environment and
 bootstrap callers, checking network/telemetry inputs and state recovery/access
@@ -100,7 +100,7 @@ lefthook validate
 bun run test
 ```
 
-The [Commitlint workflow](.github/workflows/commitlint.yml) validates hook configuration, accepted/rejected messages, PR commits, PR titles and prospective squash messages, and the latest commit on pushes to `main`. PR title/body edits rerun validation. These checks do not plan or deploy infrastructure.
+CI also calls the shared [`conventions.yml`](https://github.com/pipesor-org/pipesor-ci#catalog) from [pipesor-ci](https://github.com/pipesor-org/pipesor-ci): the canonical commitlint/Lefthook configuration, PR titles (at most 65 characters) and prospective squash messages, PR commits, the latest commit on pushes to `main`, actionlint and zizmor. PR title/body edits rerun validation. The `tooling` job runs `bun run test:tooling`. These checks do not plan or deploy infrastructure.
 
 ## Repository guide
 

@@ -1,18 +1,47 @@
-name: Terraform
+name: CI
 
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
 
-permissions:
-  contents: read
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  validate:
+  conventions:
+    uses: pipesor-org/pipesor-ci/.github/workflows/conventions.yml@df3b5fc08bc631912ff34be9154aa27776472754 # v1.0.0
+    permissions:
+      contents: read
+
+  tooling:
+    name: tooling
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - name: Test contract runner, deployment scaffold and runtime handoff
+        run: bun run test:tooling
+
+  terraform:
+    name: terraform (${{ matrix.directory }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -41,17 +70,17 @@ jobs:
       ARM_USE_MSI: "false"
       ARM_USE_OIDC: "false"
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Read Terraform version
         id: terraform
         run: echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: ${{ steps.terraform.outputs.version }}
           terraform_wrapper: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
       - run: git diff --check
@@ -63,4 +92,6 @@ jobs:
         working-directory: ${{ matrix.directory }}
         run: terraform validate
       - name: Test reviewed mocked plans and caller contracts
-        run: bun tests/terraform-contracts.js "${{ matrix.directory }}"
+        env:
+          DIRECTORY: ${{ matrix.directory }}
+        run: bun tests/terraform-contracts.js "$DIRECTORY"

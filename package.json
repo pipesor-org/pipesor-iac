@@ -6,7 +6,8 @@
   "scripts": {
     "setup:hooks": "lefthook install",
     "commitlint": "bun ./node_modules/@commitlint/cli/cli.js",
-    "test": "sh tests/commit-msg.sh && bun test tests/terraform-contracts.test.js tests/deployment-scaffold.test.js tests/rag-runtime-contract.test.js"
+    "test": "sh tests/commit-msg.sh && bun run test:tooling",
+    "test:tooling": "bun test tests/terraform-contracts.test.js tests/deployment-scaffold.test.js tests/rag-runtime-contract.test.js"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

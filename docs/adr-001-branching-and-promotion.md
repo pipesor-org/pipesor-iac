@@ -21,6 +21,16 @@ retains these roots, isolation and immutable promotion semantics, selects DEV on
 in one temporary subscription/tenant, and retires unused administrative cost infrastructure from source after the target inventory review.
 Future environments may use independent subscriptions without requiring separate tenants.
 
+Repository and delivery update (2026-11-22): every `pipesor-org` repository is now public. On GitHub
+Free, public repositories support rulesets, required checks and environment reviewers, so the
+limitations recorded below no longer apply as stated. Each repository's default branch now has a
+ruleset requiring pull requests with squash merges and blocking force pushes and deletion; required
+checks follow once the shared CI is integrated. CI is centralized in
+[pipesor-ci](https://github.com/pipesor-org/pipesor-ci) (pinned by SHA), and the environment roots
+remain the single owner of deployed application images: services publish immutable candidates and
+never deploy, and promotion/rollback are reviewed plans with a digest. Environment reviewer gates for
+qa/preprod/prod remain to be configured when those environments are commissioned.
+
 ## Source and integration
 
 `main` is the single source of truth. Use small, short-lived `feature/<topic>` or
