@@ -107,10 +107,11 @@ capture scope; other workflows are answered `403` and nothing is captured.
 The webhook is configured on the GitHub App, so it fires for every installation. Enable it in this order:
 
 1. **Secret (operator).** Generate it on the allowed IPv4 without printing it, store it, and record the
-   returned version (last segment of the `id`):
+   returned version (last segment of the `id`). Ingestion uses the stored value byte for byte and GitHub
+   signs with what is pasted into the App, so the file must not end with a newline (`openssl` adds one):
 
    ```bash
-   umask 077; openssl rand -hex 32 > ~/.local/state/pipesor-dev-bootstrap/webhook-secret
+   umask 077; openssl rand -hex 32 | tr -d '\n' > ~/.local/state/pipesor-dev-bootstrap/webhook-secret
    az keyvault secret set --vault-name kv-pipesor-dev-04f339b7 --name github-webhook-secret \
      --file ~/.local/state/pipesor-dev-bootstrap/webhook-secret --query id -o tsv
    ```
