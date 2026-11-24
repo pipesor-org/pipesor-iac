@@ -44,8 +44,10 @@ foundry = {
   location     = "westus3"
   # Existing deployments are imported (docs/dev-runtime-deployment.md); capacity is thousands of tokens per minute.
   deployments = {
-    pipesor-dev-diagnostics = { model_name = "gpt-4o", model_version = "2024-11-20", sku_name = "DataZoneStandard", capacity = 20 }
-    pipesor-dev-embeddings  = { model_name = "text-embedding-3-small", model_version = "1", sku_name = "DataZoneStandard", capacity = 20 }
+    # Diagnosis model selected by ADR-026 (pipesor-docs); gpt-4o remains as the PD-026 smoke-test baseline.
+    pipesor-dev-diagnostics-luna = { model_name = "gpt-6-luna", model_version = "2026-09-22", sku_name = "DataZoneStandard", capacity = 20 }
+    pipesor-dev-diagnostics      = { model_name = "gpt-4o", model_version = "2024-11-20", sku_name = "DataZoneStandard", capacity = 20 }
+    pipesor-dev-embeddings       = { model_name = "text-embedding-3-small", model_version = "1", sku_name = "DataZoneStandard", capacity = 20 }
   }
 }
 # Static Web Apps is not offered in the subscription's allowed regions; the dashboard is a Container App (workloads).
@@ -63,7 +65,7 @@ workloads = null
 # workloads = {
 #   platform_tenant_id      = "REPLACE_WITH_PIPESOR_PLATFORM_TENANT_UUID"
 #   database                = "pipesor"
-#   chat_deployment         = "pipesor-dev-diagnostics"
+#   chat_deployment         = "pipesor-dev-diagnostics-luna"
 #   embedding_deployment    = "pipesor-dev-embeddings"
 #   embedding_model_version = "1"
 #   images = {

@@ -11,7 +11,7 @@ Every `terraform apply`, import and Azure write below needs Jhon's explicit auth
 | Module | Adds |
 |---|---|
 | `service-bus` (`topology`) | Topic `workflow-evidence`, subscriptions `pipeline`, `log-event`, `nlp`, each with one SQL rule `event-type` (ARM-created subscriptions have no default rule) |
-| `foundry` (`deployments`) | `pipesor-dev-diagnostics` (gpt-4o 2024-11-20) and `pipesor-dev-embeddings` (text-embedding-3-small 1), pinned (`NoAutoUpgrade`), capacity 20 |
+| `foundry` (`deployments`) | `pipesor-dev-diagnostics-luna` (gpt-6-luna 2026-09-22, the diagnosis model selected by ADR-026 and set as `workloads.chat_deployment`), `pipesor-dev-diagnostics` (gpt-4o 2024-11-20, PD-026 smoke-test baseline) and `pipesor-dev-embeddings` (text-embedding-3-small 1), pinned (`NoAutoUpgrade`), capacity 20. The account also holds the `-terra` and `-sol` variants compared in ADR-026 |
 | `key-vault` (existing) | App material vault and OAuth custody vault |
 | `workloads` (new) | Nine user-assigned identities (seven workloads, `db-admin`, `dashboard`), eight non-exportable RSA signing keys, least-privilege role assignments, `db-admin` as an extra PostgreSQL Entra administrator, seven service Container Apps, the dashboard Container App (nginx static SPA; Static Web Apps is not offered in the subscription's allowed regions brazilsouth, northcentralus, westus3, southcentralus, mexicocentral) and three manual jobs |
 
