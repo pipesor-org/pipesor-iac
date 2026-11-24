@@ -568,17 +568,7 @@ run "workloads_runtime_contract" {
       chat_deployment         = "pipesor-dev-diagnostics"
       embedding_deployment    = "pipesor-dev-embeddings"
       embedding_model_version = "1"
-      images = {
-        ingestion      = "ghcr.io/pipesor-org/ingestion@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        pipeline       = "ghcr.io/pipesor-org/pipeline@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        log-event      = "ghcr.io/pipesor-org/log-event@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        nlp            = "ghcr.io/pipesor-org/nlp@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        correlation    = "ghcr.io/pipesor-org/correlation@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        recommendation = "ghcr.io/pipesor-org/recommendation@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        rag            = "ghcr.io/pipesor-org/rag@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        dashboard      = "ghcr.io/pipesor-org/dashboard@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      }
-      registry = { server = "ghcr.io", username = "fixture-user", password_secret_name = "ghcr-read-token" }
+      registry                = { server = "ghcr.io", username = "fixture-user", password_secret_name = "ghcr-read-token" }
       github = {
         app_id                  = "123456"
         capture_domain          = "pipesor-dev"
@@ -698,4 +688,90 @@ run "workloads_runtime_contract" {
     condition     = output.workloads.urls["log-event"] == "https://log-event.internal.fixture.workloadregion.azurecontainerapps.io"
     error_message = "Internal workloads are reached through their internal HTTPS FQDN."
   }
+  assert {
+    condition = length(local.images) == 8 && alltrue([
+      for workload, reference in local.images : can(regex("^ghcr\\.io/pipesor-org/pipesor-[a-z-]+@sha256:[0-9a-f]{64}$", reference))
+    ])
+    error_message = "Every workload image comes from the versioned images.json, pinned by digest."
+  }
+}
+
+run "reject_workloads_images_in_tfvars" {
+  command = plan
+  variables {
+    container_platform = {
+      location                     = "workloadregion"
+      vnet_address_prefix          = "10.50.0.0/16"
+      infrastructure_subnet_prefix = "10.50.1.0/24"
+      log_retention_days           = 30
+      log_daily_cap_gb             = 0.1
+    }
+    postgresql = {
+      server_name   = "test-pipesor-dev-pg"
+      location      = "workloadregion"
+      subnet_prefix = "10.50.2.0/28"
+      tenant_id     = "11111111-1111-1111-1111-111111111111"
+      administrator = { object_id = "22222222-2222-2222-2222-222222222222", principal_name = "test-admins", principal_type = "Group" }
+    }
+    service_bus = {
+      namespace_name = "test-pipesor-dev-bus"
+      location       = "workloadregion"
+      topology = {
+        topic_name                 = "workflow-evidence"
+        message_ttl                = "P14D"
+        duplicate_detection_window = "PT10M"
+        subscriptions = {
+          pipeline  = { sql_filter = "eventType = 'execution.snapshot'", lock_duration = "PT1M", max_delivery_count = 10 }
+          log-event = { sql_filter = "eventType = 'protected_workflow_evidence'", lock_duration = "PT1M", max_delivery_count = 10 }
+          nlp       = { sql_filter = "eventType = 'protected_workflow_evidence'", lock_duration = "PT2M", max_delivery_count = 10 }
+        }
+      }
+    }
+    key_vault = {
+      app_material_name    = "test-pipesor-dev-app"
+      location             = "workloadregion"
+      tenant_id            = "11111111-1111-1111-1111-111111111111"
+      allowed_public_ipv4s = ["203.0.113.5/32"]
+      custody              = { name = "test-pipesor-dev-usr" }
+    }
+    foundry = {
+      account_name = "test-pipesor-dev-ai"
+      project_name = "pipesor-dev"
+      location     = "workloadregion"
+      deployments = {
+        pipesor-dev-diagnostics = { model_name = "gpt-4o", model_version = "2024-11-20", sku_name = "DataZoneStandard", capacity = 20 }
+        pipesor-dev-embeddings  = { model_name = "text-embedding-3-small", model_version = "1", sku_name = "DataZoneStandard", capacity = 20 }
+      }
+    }
+    static_web_app = { name = "test-pipesor-dev-web", location = "workloadregion" }
+    workloads = {
+      platform_tenant_id      = "24c96be0-50f3-4064-b5e4-643088141ae8"
+      database                = "pipesor"
+      chat_deployment         = "pipesor-dev-diagnostics"
+      embedding_deployment    = "pipesor-dev-embeddings"
+      embedding_model_version = "1"
+      images = {
+        ingestion      = "ghcr.io/pipesor-org/ingestion@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        pipeline       = "ghcr.io/pipesor-org/pipeline@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        log-event      = "ghcr.io/pipesor-org/log-event@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        nlp            = "ghcr.io/pipesor-org/nlp@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        correlation    = "ghcr.io/pipesor-org/correlation@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        recommendation = "ghcr.io/pipesor-org/recommendation@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        rag            = "ghcr.io/pipesor-org/rag@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        dashboard      = "ghcr.io/pipesor-org/dashboard@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+      registry = { server = "ghcr.io", username = "fixture-user", password_secret_name = "ghcr-read-token" }
+      github = {
+        app_id                  = "123456"
+        capture_domain          = "pipesor-dev"
+        private_key_secret_name = "github-app-private-key"
+        private_key_version     = "0123456789abcdef0123456789abcdef"
+        client_secret_name      = "github-app-client-secret"
+        client_secret_version   = "fedcba9876543210fedcba9876543210"
+        authority_secret_name   = "pipesor-authority"
+      }
+    }
+  }
+
+  expect_failures = [var.workloads]
 }

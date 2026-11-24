@@ -72,6 +72,14 @@ module "key_vault" {
   allowed_subnet_ids = var.container_platform == null ? [] : [module.container_platform[0].platform.infrastructure_subnet_id]
 }
 
+# Deployed application images are versioned in Git (images.json, schema 1): each entry is the
+# candidate.json identity published by the service CI. Deploying, promoting or rolling back an image
+# is a reviewed change to that file followed by a fresh plan; tools/images.js writes and checks it.
+locals {
+  deployed_images = jsondecode(file("${path.module}/images.json"))
+  images          = { for workload, entry in local.deployed_images.images : workload => "${entry.image}@${entry.digest}" }
+}
+
 module "workloads" {
   count             = var.workloads == null ? 0 : 1
   source            = "../../modules/workloads"
@@ -81,7 +89,7 @@ module "workloads" {
     location                 = var.container_platform.location
     platform_tenant_id       = var.workloads.platform_tenant_id
     container_environment_id = module.container_platform[0].platform.environment_id
-    images                   = var.workloads.images
+    images                   = local.images
     registry                 = var.workloads.registry
     key_vault                = { id = module.key_vault[0].vaults["app_material"].id, uri = module.key_vault[0].vaults["app_material"].uri }
     custody_vault            = { id = module.key_vault[0].vaults["custody"].id, uri = module.key_vault[0].vaults["custody"].uri }

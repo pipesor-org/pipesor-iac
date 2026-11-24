@@ -68,16 +68,7 @@ workloads = null
 #   chat_deployment         = "pipesor-dev-diagnostics-luna"
 #   embedding_deployment    = "pipesor-dev-embeddings"
 #   embedding_model_version = "1"
-#   images = {
-#     ingestion      = "ghcr.io/pipesor-org/pipesor-ingestion-normalization-service@sha256:REPLACE"
-#     pipeline       = "ghcr.io/pipesor-org/pipesor-pipeline-service@sha256:REPLACE"
-#     log-event      = "ghcr.io/pipesor-org/pipesor-log-event-service@sha256:REPLACE"
-#     nlp            = "ghcr.io/pipesor-org/pipesor-nlp-log-processor@sha256:REPLACE"
-#     correlation    = "ghcr.io/pipesor-org/pipesor-evidence-correlation-engine@sha256:REPLACE"
-#     recommendation = "ghcr.io/pipesor-org/pipesor-recommendation-service@sha256:REPLACE"
-#     rag            = "ghcr.io/pipesor-org/pipesor-rag-retrieval@sha256:REPLACE"
-#     dashboard      = "ghcr.io/pipesor-org/pipesor-frontend@sha256:REPLACE"
-#   }
+#   # Images are not set here: environments/dev/images.json pins every workload by digest (tools/images.js).
 #   registry = { server = "ghcr.io", username = "REPLACE_WITH_GITHUB_USER", password_secret_name = "ghcr-read-token" }
 #   github = {
 #     app_id                  = "REPLACE_WITH_GITHUB_APP_ID"
