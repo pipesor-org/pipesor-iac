@@ -69,8 +69,9 @@ from the allowed IPv4 and delete local copies you created for the upload.
 
 ## Phase 3 — workloads
 
-Fill `workloads` (images by digest, registry user, platform tenant UUID, GitHub App id, capture
-domain, secret versions), plan, review and apply. Then run the jobs once, in order, and wait for
+Fill `workloads` (registry user, platform tenant UUID, GitHub App id, capture domain, secret
+versions); the images come from the versioned `environments/dev/images.json` (see below). Plan,
+review and apply. Then run the jobs once, in order, and wait for
 each to succeed (`az containerapp job start -g rg-pipesor-dev -n <job>`;
 `az containerapp job execution list …`):
 
@@ -129,7 +130,7 @@ reviewed plan. Manual analysis from the dashboard keeps working throughout.
 ## Phase 4 — dashboard
 
 The frontend CI publishes an environment-independent nginx image of the SPA to GHCR; pin its digest as
-`workloads.images.dashboard`. The module sets `PIPESOR_INGESTION_URL`, `PIPESOR_PIPELINE_URL` and
+`dashboard` in `environments/dev/images.json`. The module sets `PIPESOR_INGESTION_URL`, `PIPESOR_PIPELINE_URL` and
 `PIPESOR_RECOMMENDATION_URL` (`https://ingestion|pipeline|recommendation.<domain>`) on the container, and
 `PIPESOR_GITHUB_APP_INSTALL_URL` when `workloads.github.app_slug` is set; the image renders `/config.js`
 and its CSP from them at startup and refuses to start without them. Apply this configuration before
@@ -139,12 +140,27 @@ after GitHub login.
 
 ## Updating, promoting and rolling back images
 
-Application repositories never deploy: this root owns every Container App image. Each successful
-`main` CI run of a service records `candidate-<run>-<attempt>/candidate.json` (source SHA, image,
-digest, CI run/attempt). To deploy it, set that `image@digest` in `workloads.images`, generate a fresh
-plan, review that only the expected Container App changes and apply it with the usual authorization.
-Promotion to a later environment reuses the same digest in that environment's root; rollback is a new
-reviewed plan with the earlier digest. Record the candidate manifest with the deployment record.
+Application repositories never deploy: this root owns every Container App image. The deployed images
+are versioned in Git as `environments/<env>/images.json` (schema 1): one entry per workload with the
+`candidate.json` identity published by the service CI (`image`, `digest`, `source_sha`,
+`build_run_id`, `build_run_attempt`). The root reads that file; `workloads.images` in the private
+tfvars is rejected so the file stays the single source.
+
+```bash
+bun tools/images.js show dev                                   # what the dev root deploys
+bun tools/images.js set dev pipeline --run <id> --attempt <n>   # a successful main CI candidate
+bun tools/images.js set dev pipeline --release v0.2.0           # or a published RC/stable manifest
+bun tools/images.js promote dev qa pipeline                     # same digest to the next root
+bun tools/images.js check                                       # also run by CI
+```
+
+`set` downloads the candidate with `gh` and accepts it only when its CI attempt is a successful
+`main` push of `ci.yml` in the service repository. Every change goes through a PR (the Git history is
+the deployment record of each environment); after merge, generate a fresh plan, review that only the
+expected Container App image changes and apply it with the usual authorization. Promotion reuses the
+same digest in the next environment's file and root; rollback is a PR restoring an earlier entry (from
+the file's history) and a new reviewed plan. The registry retention in pipesor-ci protects the current
+and recent entries of every `images.json`, so keep an image referenced here while it may be needed.
 
 ## Cost control
 

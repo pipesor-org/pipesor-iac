@@ -104,6 +104,7 @@ CI also calls the shared [`conventions.yml`](https://github.com/pipesor-org/pipe
 
 ## Repository guide
 
+- Deployed application images: `environments/<env>/images.json`, versioned and managed with `bun tools/images.js` ([runbook](docs/dev-runtime-deployment.md#updating-promoting-and-rolling-back-images)).
 - [Technical direction](docs/architecture.md): current foundation, intended layout, state handling, and provider/module selection criteria.
 - [Cost governance](docs/subscription-controls.md): native visibility, DEV attribution and future independent cost governance.
 - [Consumed architecture](docs/architecture-consumption.md): consulted documentation revision, evidence limits, supported scope and unresolved contracts.

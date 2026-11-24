@@ -7,7 +7,8 @@
     "setup:hooks": "lefthook install",
     "commitlint": "bun ./node_modules/@commitlint/cli/cli.js",
     "test": "sh tests/commit-msg.sh && bun run test:tooling",
-    "test:tooling": "bun test tests/terraform-contracts.test.js tests/deployment-scaffold.test.js tests/rag-runtime-contract.test.js"
+    "test:tooling": "bun test tests/terraform-contracts.test.js tests/deployment-scaffold.test.js tests/rag-runtime-contract.test.js tests/images.test.js",
+    "images": "bun tools/images.js"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

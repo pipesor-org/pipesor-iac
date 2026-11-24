@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "environment": "dev",
+  "images": {
+    "ingestion": {
+      "image": "ghcr.io/pipesor-org/pipesor-ingestion-normalization-service",
+      "digest": "sha256:f6cfa19dd0346816687c15f29c3f3c07d4a2f12fd7966162c300efd5c27d12ad",
+      "source_sha": "9bb7d2bb78080d634ebcf516f00996f47bf70921",
+      "build_run_id": "45397683978",
+      "build_run_attempt": "1"
+    },
+    "pipeline": {
+      "image": "ghcr.io/pipesor-org/pipesor-pipeline-service",
+      "digest": "sha256:4de2c892fb47a36e0f40aa719d5b357c52250cae4de77bbd77bae627ea9c1161",
+      "source_sha": "dcaa0027db783e2ed65ca25efe2b19b197544736",
+      "build_run_id": "45324355671",
+      "build_run_attempt": "1"
+    },
+    "log-event": {
+      "image": "ghcr.io/pipesor-org/pipesor-log-event-service",
+      "digest": "sha256:3a4ee3904e94a4eb79093ee6a3f3896d2be4fb37c1cafda368380422b1286c7b",
+      "source_sha": "31a86e02322a7cd804201bc683f6e187f23292f0",
+      "build_run_id": "45110500719",
+      "build_run_attempt": "1"
+    },
+    "nlp": {
+      "image": "ghcr.io/pipesor-org/pipesor-nlp-log-processor",
+      "digest": "sha256:71e7e7825553b2bd8a46baf1bcffb9ae3173fa33ae5930a9d2bfa820212b9615",
+      "source_sha": "73451c3bce406b643689dbacb9cd98c14f26ba8c",
+      "build_run_id": "45092452287",
+      "build_run_attempt": "1"
+    },
+    "correlation": {
+      "image": "ghcr.io/pipesor-org/pipesor-evidence-correlation-engine",
+      "digest": "sha256:05033307ff3b9609c9b7ae1ad3f332577123f989c9cb7e3f78491f91eb705261",
+      "source_sha": "533fa539d6dfd58f55e8961c04ba730281293716",
+      "build_run_id": "45110553192",
+      "build_run_attempt": "1"
+    },
+    "recommendation": {
+      "image": "ghcr.io/pipesor-org/pipesor-recommendation-service",
+      "digest": "sha256:6fb6c3bd1856e950fd626e0bc82025ddde6c7e2a6e64986972409f9a693ef801",
+      "source_sha": "f59827ca7991c4aa89222c9a11df3b5403e59bbd",
+      "build_run_id": "45391091154",
+      "build_run_attempt": "1"
+    },
+    "rag": {
+      "image": "ghcr.io/pipesor-org/pipesor-rag-retrieval",
+      "digest": "sha256:27f301b24df4aa989c0bac506c34b1db58e80b3f589c73b8f4c1f76f7fce005b",
+      "source_sha": "4fd400fd16d914715ca8233b4949985e75e22395",
+      "build_run_id": "45092460013",
+      "build_run_attempt": "1"
+    },
+    "dashboard": {
+      "image": "ghcr.io/pipesor-org/pipesor-frontend",
+      "digest": "sha256:9addb2450ee63de61b3b3e449f1d9928815adc43ba9db4e04f2b5329747b917e",
+      "source_sha": "07d9f5d1474d797215f6ee96d63e4b94d0137ac9",
+      "build_run_id": "45399580920",
+      "build_run_attempt": "1"
+    }
+  }
+}

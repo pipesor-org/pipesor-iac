@@ -176,7 +176,8 @@ variable "workloads" {
     chat_deployment         = string
     embedding_deployment    = string
     embedding_model_version = string
-    images                  = map(string)
+    # Deprecated: deployed images live in environments/dev/images.json; must stay unset.
+    images = optional(map(string))
     registry = object({
       server               = string
       username             = string
@@ -210,5 +211,9 @@ variable "workloads" {
       contains(keys(var.foundry.deployments), var.workloads.chat_deployment) && contains(keys(var.foundry.deployments), var.workloads.embedding_deployment), false
     )
     error_message = "The chat and embedding deployments must be Foundry deployments declared in var.foundry.deployments."
+  }
+  validation {
+    condition     = var.workloads == null || try(var.workloads.images == null, true)
+    error_message = "workloads.images moved to environments/dev/images.json (versioned in Git); remove it from the private tfvars and update images with tools/images.js."
   }
 }
