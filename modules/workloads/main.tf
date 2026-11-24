@@ -12,7 +12,7 @@ locals {
   # Platform identity contract v1 route catalog: target => caller => roles (same as pipesor-workspace local_stack).
   trust = {
     ingestion      = { pipeline = ["Pipeline.MachineScope.Check", "Pipeline.GitHubFacts.Read", "Pipeline.CaptureScope.Write"] }
-    pipeline       = { correlation = ["Correlation.OperationalReferences.Check"], log-event = ["Evidence.Check"], recommendation = ["Recommendation.DiagnosisEntitlements.Resolve"] }
+    pipeline       = { correlation = ["Correlation.OperationalReferences.Check"], log-event = ["Evidence.Check"], recommendation = ["Recommendation.DiagnosisEntitlements.Resolve", "Recommendation.DiagnosisSummaries.Write"] }
     log-event      = { correlation = ["Correlation.EvidenceMembership.Check"] }
     nlp            = {}
     correlation    = { nlp = ["Nlp.ProcessedEvidence.Send"] }

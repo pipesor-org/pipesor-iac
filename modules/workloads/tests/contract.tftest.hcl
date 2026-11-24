@@ -81,8 +81,8 @@ run "runtime_manifest_contract" {
     error_message = "Only ingestion, pipeline and recommendation have external ingress."
   }
   assert {
-    condition     = contains(azapi_resource.app["pipeline"].body.properties.template.containers[0].env, { name = "PIPESOR_SECURITY_TRUSTEDWORKLOADS_2_ROLES", value = "Recommendation.DiagnosisEntitlements.Resolve" })
-    error_message = "Pipeline must trust recommendation with the entitlement role (route catalog)."
+    condition     = contains(azapi_resource.app["pipeline"].body.properties.template.containers[0].env, { name = "PIPESOR_SECURITY_TRUSTEDWORKLOADS_2_ROLES", value = "Recommendation.DiagnosisEntitlements.Resolve,Recommendation.DiagnosisSummaries.Write" })
+    error_message = "Pipeline must trust recommendation with the entitlement and diagnosis summary roles (route catalog)."
   }
   assert {
     condition     = contains(azapi_resource.app["nlp"].body.properties.template.containers[0].env, { name = "PIPESOR_SIGNING_KEY_ID", value = "https://kv-app.vault.azure.net/keys/fixture/0123456789abcdef0123456789abcdef" })
